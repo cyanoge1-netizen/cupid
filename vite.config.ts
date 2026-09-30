@@ -27,7 +27,7 @@ export default defineConfig({
         name: 'ঘটকালি (Ghotkali)',
         short_name: 'ঘটকালি',
         description: 'বায়োডাটা ম্যানেজমেন্ট অ্যাপ',
-        theme_color: '#16a34a',
+        theme_color: '#0B5D3B',
         background_color: '#ffffff',
         display: 'standalone',
         lang: 'bn',
