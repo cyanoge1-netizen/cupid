@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parseBiodataText } from './parser';
+import 'fake-indexeddb/auto';
+import { parseBiodataText, splitEducationText } from './parser';
+import { norm } from './normalizer';
+import { findOrCreateFieldDef } from './catalog';
+import { db } from '../db';
 
 describe('Biodata Text Parser', () => {
   it('parses realistic multi-line Bangla biodata with Bangla digits', () => {
@@ -79,9 +83,99 @@ Contact: 01811223344
   });
 
   it('handles empty and partial text safely', () => {
-    expect(parseBiodataText('')).toEqual({ rawText: '' });
+    expect(parseBiodataText('')).toEqual({ rawText: '', leftovers: [] });
     expect(parseBiodataText('শুধু একটি সাধারণ বার্তা')).toEqual({
       rawText: 'শুধু একটি সাধারণ বার্তা',
+      leftovers: [],
+    });
+  });
+
+  describe('Parser Leftover Extraction (SPEC-UPDATE-1 3.5)', () => {
+    it('extracts non-built-in lines as leftovers with original labels and values', () => {
+      const raw = `
+নাম: রাসেল আহমেদ
+পিতার নাম: রফিক আহমেদ
+ভাই: ২ জন
+বোন: ১ জন
+রক্তের গ্রুপ: B+
+পিতার পেশা: অবসরপ্রাপ্ত সরকারি কর্মকর্তা
+`;
+      const parsed = parseBiodataText(raw);
+
+      expect(parsed.name).toBe('রাসেল আহমেদ');
+      expect(parsed.father).toBe('রফিক আহমেদ');
+      expect(parsed.leftovers).toHaveLength(4);
+      expect(parsed.leftovers).toEqual([
+        { label: 'ভাই', value: '২ জন' },
+        { label: 'বোন', value: '১ জন' },
+        { label: 'রক্তের গ্রুপ', value: 'B+' },
+        { label: 'পিতার পেশা', value: 'অবসরপ্রাপ্ত সরকারি কর্মকর্তা' },
+      ]);
+    });
+
+    it('handles various separators and stripped bullet points in leftovers', () => {
+      const raw = `
+১. শখ: বই পড়া
+২. বিশেষ নোট - শান্ত স্বভাবের
+* নিজস্ব বাড়ি = আছে
+`;
+      const parsed = parseBiodataText(raw);
+
+      expect(parsed.leftovers).toEqual([
+        { label: 'শখ', value: 'বই পড়া' },
+        { label: 'বিশেষ নোট', value: 'শান্ত স্বভাবের' },
+        { label: 'নিজস্ব বাড়ি', value: 'আছে' },
+      ]);
+    });
+  });
+
+  describe('splitEducationText (SPEC-UPDATE-1 3.5)', () => {
+    it('splits education entries on commas, semicolons, and newlines', () => {
+      expect(splitEducationText('এসএসসি, এইচএসসি, বিএসসি')).toEqual([
+        'এসএসসি',
+        'এইচএসসি',
+        'বিএসসি',
+      ]);
+
+      expect(splitEducationText('দাখিল; আলিম\nকামিল')).toEqual([
+        'দাখিল',
+        'আলিম',
+        'কামিল',
+      ]);
+    });
+
+    it('returns single item or empty array cleanly', () => {
+      expect(splitEducationText('এমবিবিএস')).toEqual(['এমবিবিএস']);
+      expect(splitEducationText('')).toEqual([]);
+    });
+  });
+
+  describe('Checklist catalog pre-check lifecycle (SPEC-UPDATE-1 4 Acceptance)', () => {
+    it('is unchecked initially if label is not in catalog, and pre-checked on next paste after being saved', async () => {
+      await db.fieldDefs.clear();
+
+      // Paste 1: "শখ: বই পড়া"
+      const parsed1 = parseBiodataText('শখ: বই পড়া');
+      expect(parsed1.leftovers).toHaveLength(1);
+      const item1 = parsed1.leftovers![0];
+
+      // Check if matches catalog
+      const defs1 = await db.fieldDefs.toArray();
+      const match1 = defs1.find((d) => d.normLabel === norm(item1.label));
+      expect(match1).toBeUndefined(); // Not in catalog -> unchecked by default
+
+      // User saves it -> catalog entry created
+      await findOrCreateFieldDef(item1.label, 'other', 'text');
+
+      // Paste 2: Another biodata with same label "শখ: বাগান করা"
+      const parsed2 = parseBiodataText('শখ: বাগান করা');
+      expect(parsed2.leftovers).toHaveLength(1);
+      const item2 = parsed2.leftovers![0];
+
+      const defs2 = await db.fieldDefs.toArray();
+      const match2 = defs2.find((d) => d.normLabel === norm(item2.label));
+      expect(match2).toBeDefined(); // Found in catalog -> pre-checked by default!
+      expect(match2?.label).toBe('শখ');
     });
   });
 });

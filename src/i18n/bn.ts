@@ -151,6 +151,9 @@ export const bn = {
     pasteModalTitle: 'বায়োডাটা টেক্সট পেস্ট করুন',
     pastePlaceholder: 'এখানে বায়োডাটার টেক্সট পেস্ট করুন...',
     discardConfirm: 'আপনি কি নিশ্চিত যে এই ইনবক্স আইটেমটি বাতিল করতে চান?',
+    leftoversTitle: 'আরও তথ্য পাওয়া গেছে',
+    leftoversDesc: 'যেসব তথ্য মূল ফিল্ডে বসেনি তা কাস্টম তথ্য হিসেবে যোগ করতে টিক দিন।',
+    splitEducation: 'আলাদা করুন',
   },
 
   // Partners

@@ -1,5 +1,10 @@
 import { banglaDigitsToEnglish } from './normalizer';
 
+export interface ParserLeftover {
+  label: string;
+  value: string;
+}
+
 export interface ParsedBiodata {
   name?: string;
   father?: string;
@@ -13,6 +18,19 @@ export interface ParsedBiodata {
   profession?: string;
   phoneLast4?: string;
   rawText: string;
+  leftovers?: ParserLeftover[];
+}
+
+/**
+ * Splits education text containing multiple degrees (separated by commas, semicolons, or newlines)
+ * into distinct degree strings (SPEC-UPDATE-1 3.5).
+ */
+export function splitEducationText(text: string): string[] {
+  if (!text) return [];
+  return text
+    .split(/[,;\n\r،]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 // Ordered label patterns: more specific labels first
@@ -39,6 +57,7 @@ const LABEL_RULES: Array<{
 export function parseBiodataText(rawInput: string): ParsedBiodata {
   const result: ParsedBiodata = {
     rawText: rawInput,
+    leftovers: [],
   };
 
   if (!rawInput || !rawInput.trim()) {
@@ -65,18 +84,39 @@ export function parseBiodataText(rawInput: string): ParsedBiodata {
       continue;
     }
 
-    const potentialLabel = sepMatch[1].trim().toLowerCase();
+    // Get original Bangla label from line
+    const rawSepMatch = line.match(/^([^:\-–—=]+)[:\-–—=]\s*(.*)$/);
+    const rawLabel = rawSepMatch ? rawSepMatch[1].trim() : sepMatch[1].trim();
+    // Strip leading numbering or bullet symbols (e.g. "১. ", "1. ", "* ", "- ")
+    const cleanLabel = rawLabel.replace(/^[\d\s.\-•*০-৯]+/, '').trim() || rawLabel;
+
+    const potentialLabel = cleanLabel.toLowerCase();
     const rawVal = sepMatch[2].trim();
     if (!rawVal) continue;
+
+    let matchedRule = false;
 
     // Check against label rules
     for (const rule of LABEL_RULES) {
       const isMatch = rule.labels.some((l) => {
         const lowerLabel = l.toLowerCase();
-        return potentialLabel === lowerLabel || potentialLabel.endsWith(lowerLabel);
+        if (potentialLabel === lowerLabel) return true;
+        // Allow common candidate prefixes like 'পাত্রের ', 'পাত্রীর ', 'প্রার্থীর ', 'বর্তমান ', 'full '
+        if (
+          potentialLabel === `পাত্রের ${lowerLabel}` ||
+          potentialLabel === `পাত্রীর ${lowerLabel}` ||
+          potentialLabel === `প্রার্থীর ${lowerLabel}` ||
+          potentialLabel === `বর্তমান ${lowerLabel}` ||
+          potentialLabel === `full ${lowerLabel}` ||
+          potentialLabel === `candidate ${lowerLabel}`
+        ) {
+          return true;
+        }
+        return false;
       });
 
       if (isMatch) {
+        matchedRule = true;
         if (rule.field === 'age') {
           if (!result.age) {
             const ageDigits = banglaDigitsToEnglish(rawVal).match(/\d+/);
@@ -95,13 +135,20 @@ export function parseBiodataText(rawInput: string): ParsedBiodata {
             }
           }
         } else {
-          const currentField = rule.field as keyof Omit<ParsedBiodata, 'age' | 'rawText' | 'phoneLast4'>;
+          const currentField = rule.field as keyof Omit<ParsedBiodata, 'age' | 'rawText' | 'phoneLast4' | 'leftovers'>;
           if (!result[currentField]) {
             result[currentField] = rawVal;
           }
         }
         break; // Matched a rule for this line
       }
+    }
+
+    if (!matchedRule) {
+      result.leftovers!.push({
+        label: cleanLabel,
+        value: rawSepMatch ? rawSepMatch[2].trim() : rawVal,
+      });
     }
   }
 

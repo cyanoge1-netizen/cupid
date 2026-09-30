@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { InboxItem, Person, Partner, Gender, MediaRef } from '../../types';
+import type { InboxItem, Person, Partner, Gender, MediaRef, EducationEntry, CustomValue, FieldDef } from '../../types';
 import { bn } from '../../i18n/bn';
-import { parseBiodataText } from '../../utils/parser';
+import { parseBiodataText, splitEducationText } from '../../utils/parser';
+import { norm } from '../../utils/normalizer';
 import { checkDuplicates } from '../../utils/duplicates';
-import { previewNextCode } from '../../db';
+import { db, previewNextCode } from '../../db';
+import { findOrCreateFieldDef, recordFieldUsage, recordSuggestion } from '../../utils/catalog';
 import { BlobImage } from '../common/BlobImage';
 import { PartnerFormModal } from '../partners/PartnerFormModal';
+import { EducationEditor } from '../people/EducationEditor';
 import {
   ArrowLeft,
   AlertTriangle,
@@ -15,6 +18,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Split,
 } from 'lucide-react';
 
 interface ProcessItemScreenProps {
@@ -51,7 +55,94 @@ export function ProcessItemScreen({
   const [village, setVillage] = useState(parsed.village || '');
   const [age, setAge] = useState(parsed.age ? String(parsed.age) : '');
   const [height, setHeight] = useState(parsed.height || '');
-  const [education, setEducation] = useState(parsed.education || '');
+
+  // Education state (SPEC-UPDATE-1 3.3, 3.5)
+  const [educations, setEducations] = useState<EducationEntry[]>(() => {
+    if (parsed.education?.trim()) {
+      return [
+        {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+          level: parsed.education.trim(),
+        },
+      ];
+    }
+    return [];
+  });
+
+  // Leftovers checklist state (SPEC-UPDATE-1 3.5)
+  interface LeftoverCheckItem {
+    id: string;
+    label: string;
+    value: string;
+    checked: boolean;
+    matchedDef?: FieldDef;
+  }
+  const [leftovers, setLeftovers] = useState<LeftoverCheckItem[]>([]);
+
+  useEffect(() => {
+    if (!parsed.leftovers || parsed.leftovers.length === 0) {
+      setLeftovers([]);
+      return;
+    }
+
+    db.fieldDefs.toArray().then((defs) => {
+      const defMap = new Map<string, FieldDef>();
+      for (const d of defs) {
+        defMap.set(d.normLabel, d);
+      }
+
+      const items: LeftoverCheckItem[] = parsed.leftovers!.map((l, idx) => {
+        const normalized = norm(l.label);
+        const matched = defMap.get(normalized);
+        return {
+          id: `leftover-${idx}`,
+          label: l.label,
+          value: l.value,
+          checked: !!matched, // Pre-checked if matched to existing FieldDef
+          matchedDef: matched,
+        };
+      });
+
+      setLeftovers(items);
+    });
+  }, [parsed.leftovers]);
+
+  const canSplitEducation = educations.some((e) => /[,;\n\r،]/.test(e.level));
+
+  const handleSplitEducation = () => {
+    const newEducations: EducationEntry[] = [];
+    for (const entry of educations) {
+      const parts = splitEducationText(entry.level);
+      if (parts.length > 1) {
+        for (const part of parts) {
+          newEducations.push({
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+            level: part,
+            subject: entry.subject,
+            institution: entry.institution,
+            result: entry.result,
+            year: entry.year,
+          });
+        }
+      } else {
+        newEducations.push(entry);
+      }
+    }
+    setEducations(newEducations);
+  };
+
+  const handleToggleLeftover = (index: number) => {
+    setLeftovers((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, checked: !item.checked } : item))
+    );
+  };
+
+  const handleUpdateLeftoverValue = (index: number, value: string) => {
+    setLeftovers((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, value } : item))
+    );
+  };
+
   const [profession, setProfession] = useState(parsed.profession || '');
   const [phoneLast4, setPhoneLast4] = useState(parsed.phoneLast4 || '');
   const [memo, setMemo] = useState('');
@@ -130,6 +221,53 @@ export function ProcessItemScreen({
       const photos: MediaRef[] = [...imageFiles];
       const docs: MediaRef[] = [...docFiles];
 
+      // Valid educations (SPEC-UPDATE-1 3.3, 3.5)
+      const validEducations = educations
+        .map((e) => ({
+          ...e,
+          level: e.level.trim(),
+          subject: e.subject?.trim() || undefined,
+          institution: e.institution?.trim() || undefined,
+          result: e.result?.trim() || undefined,
+          year: e.year?.trim() || undefined,
+          note: e.note?.trim() || undefined,
+        }))
+        .filter((e) => e.level.length > 0);
+
+      for (const edu of validEducations) {
+        if (edu.level) {
+          recordSuggestion('eduLevel', edu.level).catch(() => {});
+        }
+      }
+
+      // Process checked leftovers into extra (SPEC-UPDATE-1 3.5)
+      const extra: CustomValue[] = [];
+      const fieldIdsToBump: string[] = [];
+
+      for (const item of leftovers) {
+        if (item.checked && item.value.trim()) {
+          if (item.matchedDef) {
+            extra.push({
+              fieldId: item.matchedDef.id,
+              value: item.value.trim(),
+            });
+            fieldIdsToBump.push(item.matchedDef.id);
+          } else {
+            // New label added to catalog (section 'other', kind 'text')
+            const newDef = await findOrCreateFieldDef(item.label, 'other', 'text');
+            extra.push({
+              fieldId: newDef.id,
+              value: item.value.trim(),
+            });
+            fieldIdsToBump.push(newDef.id);
+          }
+        }
+      }
+
+      if (fieldIdsToBump.length > 0) {
+        recordFieldUsage(fieldIdsToBump).catch(() => {});
+      }
+
       await onSaveNewPerson({
         gender,
         name: name.trim() || undefined,
@@ -141,7 +279,9 @@ export function ProcessItemScreen({
         village: village.trim() || undefined,
         age: isNaN(Number(parsedAge)) ? undefined : parsedAge,
         height: height.trim() || undefined,
-        education: education.trim() || undefined,
+        education: validEducations[0]?.level || undefined,
+        educations: validEducations,
+        extra: extra.length > 0 ? extra : undefined,
         profession: profession.trim() || undefined,
         phoneLast4: phoneLast4.trim() ? phoneLast4.trim().slice(-4) : undefined,
         memo: memo.trim() || undefined,
@@ -470,19 +610,30 @@ export function ProcessItemScreen({
                 className="w-full min-h-[48px] px-3.5 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
+          {/* Education Editor with Split Option (SPEC-UPDATE-1 3.3, 3.5) */}
+          <div className="pt-2 border-t border-gray-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-gray-700">
                 {bn.fields.education}
               </label>
-              <input
-                type="text"
-                value={education}
-                onChange={(e) => setEducation(e.target.value)}
-                placeholder="যেমন: মাস্টার্স, বিএসসি"
-                className="w-full min-h-[48px] px-3.5 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
-              />
+              {canSplitEducation ? (
+                <button
+                  type="button"
+                  onClick={handleSplitEducation}
+                  className="touch-target inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium text-xs transition"
+                >
+                  <Split className="w-3.5 h-3.5" />
+                  <span>{bn.inbox.splitEducation}</span>
+                </button>
+              ) : null}
             </div>
+
+            <EducationEditor
+              educations={educations}
+              onChange={setEducations}
+            />
           </div>
 
           <div>
@@ -511,6 +662,67 @@ export function ProcessItemScreen({
             />
           </div>
         </section>
+
+        {/* Leftovers Checklist ("আরও তথ্য পাওয়া গেছে") (SPEC-UPDATE-1 3.5) */}
+        {leftovers.length > 0 ? (
+          <section className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <span>{bn.inbox.leftoversTitle}</span>
+                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                    {leftovers.filter((l) => l.checked).length}/{leftovers.length}
+                  </span>
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {bn.inbox.leftoversDesc}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              {leftovers.map((item, index) => (
+                <div
+                  key={item.id}
+                  className={`flex items-start gap-3 p-3 rounded-xl border transition ${
+                    item.checked
+                      ? 'bg-emerald-50/50 border-emerald-300'
+                      : 'bg-gray-50 border-gray-200 opacity-70'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => handleToggleLeftover(index)}
+                    className="w-5 h-5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 mt-1 cursor-pointer"
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-gray-900">{item.label}</span>
+                      {item.matchedDef ? (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">
+                          ক্যাটালগে আছে
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full">
+                          নতুন
+                        </span>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={item.value}
+                      onChange={(e) => handleUpdateLeftoverValue(index, e.target.value)}
+                      className="w-full mt-1 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {/* 4. Source chips: recent partners first, "নিজের" always present, and "নতুন সহযোগী" */}
         <section className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
