@@ -19,6 +19,8 @@ import {
   setMeta,
   purgeOldDeleted,
   syncCounterWithExistingPeople,
+  seedFieldDefsIfEmpty,
+  seedSuggestionsIfEmpty,
 } from './db';
 import { createThumbnail, getMediaKind } from './utils/media';
 import { verifyPin, type PinHashData } from './utils/security';
@@ -106,7 +108,10 @@ export default function App() {
       // 1. Purge items with deletedAt/discardedAt older than 30 days
       await purgeOldDeleted(30);
 
-      // 2. Storage persistence check
+      // 2. Seed default field definitions & suggestions if empty (SPEC-UPDATE-1 3.4)
+      await Promise.all([seedFieldDefsIfEmpty(), seedSuggestionsIfEmpty()]);
+
+      // 3. Storage persistence check
       if (navigator.storage && navigator.storage.persist) {
         try {
           const persisted = await navigator.storage.persisted();

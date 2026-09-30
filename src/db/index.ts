@@ -1,5 +1,16 @@
 import Dexie, { type Table } from 'dexie';
-import type { Person, Partner, InboxItem, SendLog, Meta, Gender } from '../types';
+import type {
+  Person,
+  Partner,
+  InboxItem,
+  SendLog,
+  Meta,
+  Gender,
+  FieldDef,
+  Suggestion,
+  FieldSection,
+} from '../types';
+import { norm } from '../utils/normalizer';
 
 export class GhotkaliDatabase extends Dexie {
   people!: Table<Person, string>;
@@ -7,6 +18,8 @@ export class GhotkaliDatabase extends Dexie {
   inbox!: Table<InboxItem, string>;
   sendLogs!: Table<SendLog, string>;
   meta!: Table<Meta, string>;
+  fieldDefs!: Table<FieldDef, string>;
+  suggestions!: Table<Suggestion, string>;
 
   constructor(databaseName = 'GhotkaliDB') {
     super(databaseName);
@@ -17,10 +30,129 @@ export class GhotkaliDatabase extends Dexie {
       sendLogs: 'id, personId, at, response',
       meta: 'key',
     });
+
+    this.version(2).stores({
+      people: 'id, &code, status, sourceId, deletedAt, updatedAt',
+      partners: 'id, deletedAt, createdAt',
+      inbox: 'id, status, discardedAt, receivedAt',
+      sendLogs: 'id, personId, at, response',
+      meta: 'key',
+      fieldDefs: 'id, &normLabel, section, useCount',
+      suggestions: 'id, list, [list+text]',
+    }).upgrade(async (tx) => {
+      await tx.table('people').toCollection().modify((person: any) => {
+        if (
+          person.education &&
+          typeof person.education === 'string' &&
+          person.education.trim() &&
+          (!person.educations || person.educations.length === 0)
+        ) {
+          person.educations = [
+            {
+              id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+              level: person.education.trim(),
+            },
+          ];
+        }
+      });
+    });
   }
 }
 
 export const db = new GhotkaliDatabase();
+
+// ---------------- Seed Data (SPEC-UPDATE-1 3.4) ----------------
+
+export const SEED_FIELD_DEFS: Array<{ label: string; section: FieldSection; kind: 'text' | 'longtext' | 'number' }> = [
+  // family: পিতার পেশা, মাতার পেশা, ভাই, বোন, চাচা, মামা, পরিবারের ধরন, পারিবারিক অবস্থা, নিজস্ব বাড়ি
+  { label: 'পিতার পেশা', section: 'family', kind: 'text' },
+  { label: 'মাতার পেশা', section: 'family', kind: 'text' },
+  { label: 'ভাই', section: 'family', kind: 'text' },
+  { label: 'বোন', section: 'family', kind: 'text' },
+  { label: 'চাচা', section: 'family', kind: 'text' },
+  { label: 'মামা', section: 'family', kind: 'text' },
+  { label: 'পরিবারের ধরন', section: 'family', kind: 'text' },
+  { label: 'পারিবারিক অবস্থা', section: 'family', kind: 'text' },
+  { label: 'নিজস্ব বাড়ি', section: 'family', kind: 'text' },
+
+  // personal: গায়ের রং, ওজন, রক্তের গ্রুপ, ধর্মীয় অনুশীলন, আগের বিবাহ, স্থায়ী ঠিকানা, বর্তমান ঠিকানা
+  { label: 'গায়ের রং', section: 'personal', kind: 'text' },
+  { label: 'ওজন', section: 'personal', kind: 'text' },
+  { label: 'রক্তের গ্রুপ', section: 'personal', kind: 'text' },
+  { label: 'ধর্মীয় অনুশীলন', section: 'personal', kind: 'text' },
+  { label: 'আগের বিবাহ', section: 'personal', kind: 'text' },
+  { label: 'স্থায়ী ঠিকানা', section: 'personal', kind: 'text' },
+  { label: 'বর্তমান ঠিকানা', section: 'personal', kind: 'text' },
+
+  // professional: কর্মস্থল, পদবি, মাসিক আয়
+  { label: 'কর্মস্থল', section: 'professional', kind: 'text' },
+  { label: 'পদবি', section: 'professional', kind: 'text' },
+  { label: 'মাসিক আয়', section: 'professional', kind: 'text' },
+
+  // preference: পাত্র/পাত্রীর চাহিদা, বয়সের সীমা, শিক্ষাগত চাহিদা, অন্যান্য চাহিদা
+  { label: 'পাত্র/পাত্রীর চাহিদা', section: 'preference', kind: 'longtext' },
+  { label: 'বয়সের সীমা', section: 'preference', kind: 'text' },
+  { label: 'শিক্ষাগত চাহিদা', section: 'preference', kind: 'text' },
+  { label: 'অন্যান্য চাহিদা', section: 'preference', kind: 'longtext' },
+
+  // other: বিশেষ নোট
+  { label: 'বিশেষ নোট', section: 'other', kind: 'longtext' },
+];
+
+export const SEED_SUGGESTIONS: Array<{ list: 'eduLevel' | 'docLabel'; text: string }> = [
+  { list: 'eduLevel', text: 'এসএসসি' },
+  { list: 'eduLevel', text: 'এইচএসসি' },
+  { list: 'eduLevel', text: 'ডিপ্লোমা' },
+  { list: 'eduLevel', text: 'অনার্স' },
+  { list: 'eduLevel', text: 'মাস্টার্স' },
+  { list: 'eduLevel', text: 'এমবিবিএস' },
+
+  { list: 'docLabel', text: 'বায়োডাটা PDF' },
+  { list: 'docLabel', text: 'ছবি' },
+  { list: 'docLabel', text: 'সার্টিফিকেট' },
+  { list: 'docLabel', text: 'জাতীয় পরিচয়পত্র' },
+];
+
+/**
+ * Seeds default field definitions if the fieldDefs table is empty.
+ */
+export async function seedFieldDefsIfEmpty(customDb: GhotkaliDatabase = db): Promise<void> {
+  const count = await customDb.fieldDefs.count();
+  if (count > 0) return;
+
+  const now = Date.now();
+  const entries: FieldDef[] = SEED_FIELD_DEFS.map((s) => ({
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+    label: s.label,
+    normLabel: norm(s.label),
+    section: s.section,
+    kind: s.kind,
+    useCount: 0,
+    lastUsedAt: now,
+    seeded: true,
+  }));
+
+  await customDb.fieldDefs.bulkAdd(entries);
+}
+
+/**
+ * Seeds default suggestions if the suggestions table is empty.
+ */
+export async function seedSuggestionsIfEmpty(customDb: GhotkaliDatabase = db): Promise<void> {
+  const count = await customDb.suggestions.count();
+  if (count > 0) return;
+
+  const now = Date.now();
+  const entries: Suggestion[] = SEED_SUGGESTIONS.map((s) => ({
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+    list: s.list,
+    text: s.text,
+    useCount: 0,
+    lastUsedAt: now,
+  }));
+
+  await customDb.suggestions.bulkAdd(entries);
+}
 
 /**
  * Preview the next code for a given gender without committing an increment.

@@ -1,6 +1,44 @@
 export type Gender = 'B' | 'G'; // B = bride, G = groom
 export type Status = 'active' | 'proposal' | 'fixed' | 'married' | 'hold';
 
+export interface EducationEntry {
+  id: string;
+  level: string; // required, free text with suggestions: এসএসসি, এইচএসসি, ডিপ্লোমা, অনার্স, মাস্টার্স, এমবিবিএস
+  subject?: string; // বিভাগ / বিষয়
+  institution?: string;
+  result?: string; // "GPA 5.00", "First class"
+  year?: string;
+  status?: 'completed' | 'ongoing';
+  note?: string;
+}
+
+export type FieldSection = 'family' | 'personal' | 'professional' | 'preference' | 'other';
+
+export interface FieldDef {
+  id: string;
+  label: string;
+  normLabel: string; // norm(label), unique
+  section: FieldSection;
+  kind: 'text' | 'longtext' | 'number';
+  useCount: number;
+  lastUsedAt: number;
+  hidden?: boolean; // hidden from suggestions; existing values keep working
+  seeded?: boolean;
+}
+
+export interface CustomValue {
+  fieldId: string;
+  value: string;
+}
+
+export interface Suggestion {
+  id: string;
+  list: 'eduLevel' | 'docLabel';
+  text: string;
+  useCount: number;
+  lastUsedAt: number;
+}
+
 export interface MediaRef {
   id: string;
   kind: 'image' | 'pdf' | 'doc' | 'audio' | 'text';
@@ -9,6 +47,8 @@ export interface MediaRef {
   blob: Blob; // original, never modified
   driveFileId?: string; // set after upload to Google Drive (Phase 2)
   thumb?: Blob; // 320px JPEG for lists, images only
+  label?: string; // e.g. "বায়োডাটা PDF"
+  sortOrder?: number;
   createdAt: number;
 }
 
@@ -25,7 +65,8 @@ export interface Person {
   district?: string;
   age?: number;
   height?: string;
-  education?: string;
+  education?: string; // deprecated, kept for backwards compatibility
+  educations?: EducationEntry[];
   profession?: string;
   phoneLast4?: string; // last 4 digits of contact number, for duplicate checks only
   memo?: string; // free-text notes
@@ -33,7 +74,9 @@ export interface Person {
   status: Status;
   sourceId: string | null; // null = own record, else Partner.id
   photos: MediaRef[];
+  coverPhotoId?: string;
   docs: MediaRef[]; // pdf, doc, docx, txt, audio
+  extra?: CustomValue[]; // ordered
   rawText?: string; // original pasted/shared biodata text
   fromInboxId?: string;
   marriedAt?: number;
