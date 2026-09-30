@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import type { Person, Partner, EducationEntry, CustomValue, FieldDef, FieldSection } from '../../types';
+import type { Person, Partner, EducationEntry, CustomValue, FieldDef, FieldSection, MediaRef } from '../../types';
 import { bn } from '../../i18n/bn';
 import { db } from '../../db';
 import { X, ChevronDown, ChevronUp, Plus, Trash2, AlignLeft, Type } from 'lucide-react';
 import { EducationEditor } from './EducationEditor';
 import { AddCustomFieldSheet } from './AddCustomFieldSheet';
+import { PhotoManager } from './PhotoManager';
+import { DocManager } from './DocManager';
 import { recordSuggestion, recordFieldUsage } from '../../utils/catalog';
 
 interface PersonEditModalProps {
@@ -58,6 +60,11 @@ export function PersonEditModal({
   const [customKinds, setCustomKinds] = useState<Record<string, 'text' | 'longtext'>>({});
   const [activeAddSection, setActiveAddSection] = useState<FieldSection | null>(null);
 
+  // Photos & Docs state (SPEC-UPDATE-1 3.1, 3.2)
+  const [photos, setPhotos] = useState<MediaRef[]>(person.photos || []);
+  const [coverPhotoId, setCoverPhotoId] = useState<string | undefined>(person.coverPhotoId);
+  const [docs, setDocs] = useState<MediaRef[]>(person.docs || []);
+
   // Collapsible sections state
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
     // Basic and Education open by default, others open if they have data
@@ -69,6 +76,8 @@ export function PersonEditModal({
       professional: true,
       preference: true,
       other: true,
+      photos: !(person.photos && person.photos.length > 0),
+      docs: !(person.docs && person.docs.length > 0),
     };
     return initial;
   });
@@ -192,6 +201,9 @@ export function PersonEditModal({
         memo: memo.trim() || undefined,
         tags: parsedTags,
         sourceId,
+        photos,
+        coverPhotoId,
+        docs,
       });
       onClose();
     } finally {
@@ -617,6 +629,51 @@ export function PersonEditModal({
             {!collapsedSections.other && (
               <div className="p-4 border-t border-gray-200 bg-white">
                 {renderCustomSectionFields('other')}
+              </div>
+            )}
+          </div>
+
+          {/* Section 8: ছবিসমূহ (Photos) */}
+          <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-xs">
+            <button
+              type="button"
+              onClick={() => toggleSection('photos')}
+              className="touch-target w-full flex items-center justify-between p-3.5 bg-gray-50 hover:bg-gray-100/80 transition text-left font-bold text-gray-900 text-base"
+            >
+              <span>{bn.customFields.sections.photos} {photos.length > 0 && `(${photos.length})`}</span>
+              {collapsedSections.photos ? <ChevronDown className="w-5 h-5 text-gray-500" /> : <ChevronUp className="w-5 h-5 text-gray-500" />}
+            </button>
+
+            {!collapsedSections.photos && (
+              <div className="p-4 border-t border-gray-200 bg-white">
+                <PhotoManager
+                  photos={photos}
+                  coverPhotoId={coverPhotoId}
+                  onChangePhotos={setPhotos}
+                  onChangeCoverId={setCoverPhotoId}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Section 9: কাগজপত্র (Docs) */}
+          <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-xs">
+            <button
+              type="button"
+              onClick={() => toggleSection('docs')}
+              className="touch-target w-full flex items-center justify-between p-3.5 bg-gray-50 hover:bg-gray-100/80 transition text-left font-bold text-gray-900 text-base"
+            >
+              <span>{bn.customFields.sections.docs} {docs.length > 0 && `(${docs.length})`}</span>
+              {collapsedSections.docs ? <ChevronDown className="w-5 h-5 text-gray-500" /> : <ChevronUp className="w-5 h-5 text-gray-500" />}
+            </button>
+
+            {!collapsedSections.docs && (
+              <div className="p-4 border-t border-gray-200 bg-white">
+                <DocManager
+                  docs={docs}
+                  allPersonFiles={[...photos, ...docs]}
+                  onChangeDocs={setDocs}
+                />
               </div>
             )}
           </div>

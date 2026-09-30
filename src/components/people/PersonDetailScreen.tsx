@@ -8,8 +8,10 @@ import { BlobImage } from '../common/BlobImage';
 import { StatusChangeModal } from './StatusChangeModal';
 import { PersonEditModal } from './PersonEditModal';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { formatFileSize } from '../../utils/media';
 import {
   ArrowLeft,
+  ArrowRight,
   Share2,
   Edit3,
   Trash2,
@@ -19,6 +21,8 @@ import {
   ChevronUp,
   X,
   History,
+  Star,
+  ExternalLink,
 } from 'lucide-react';
 
 interface PersonDetailScreenProps {
@@ -44,8 +48,28 @@ export function PersonDetailScreen({
   const [isChangingStatus, setIsChangingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [showRawText, setShowRawText] = useState(false);
   const [fieldDefsMap, setFieldDefsMap] = useState<Map<string, FieldDef>>(new Map());
+
+  // Effective cover photo ID (coverPhotoId or first photo)
+  const effectiveCoverId = person.coverPhotoId || (person.photos?.[0]?.id);
+
+  // Keyboard navigation for photo lightbox
+  useEffect(() => {
+    if (activePhotoIndex === null || !person.photos) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && activePhotoIndex > 0) {
+        setActivePhotoIndex(activePhotoIndex - 1);
+      } else if (e.key === 'ArrowRight' && activePhotoIndex < person.photos!.length - 1) {
+        setActivePhotoIndex(activePhotoIndex + 1);
+      } else if (e.key === 'Escape') {
+        setActivePhotoIndex(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activePhotoIndex, person.photos]);
 
   useEffect(() => {
     db.fieldDefs.toArray().then((defs) => {
@@ -144,7 +168,7 @@ export function PersonDetailScreen({
                 <div
                   key={photo.id || index}
                   onClick={() => setActivePhotoIndex(index)}
-                  className="aspect-square rounded-xl overflow-hidden cursor-pointer border border-gray-200 active:scale-95 transition"
+                  className="aspect-square rounded-xl overflow-hidden cursor-pointer border border-gray-200 active:scale-95 transition relative"
                 >
                   <BlobImage
                     blob={photo.thumb || photo.blob}
@@ -152,6 +176,14 @@ export function PersonDetailScreen({
                     className="w-full h-full object-cover"
                     fallbackIcon={<User className="w-6 h-6 text-gray-300" />}
                   />
+                  {photo.id === effectiveCoverId ? (
+                    <span
+                      className="absolute top-1.5 left-1.5 bg-amber-500 text-white p-1 rounded-full shadow-sm"
+                      title={bn.photosAndDocs.coverPhoto}
+                    >
+                      <Star className="w-3 h-3 fill-white" />
+                    </span>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -401,19 +433,45 @@ export function PersonDetailScreen({
                   key={doc.id || idx}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"
                 >
-                  <div className="flex items-center gap-2 truncate">
+                  <div className="flex items-center gap-2.5 truncate mr-2">
                     <FileText className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-800 truncate font-medium">
-                      {doc.name || `ডকুমেন্ট ${idx + 1}`}
-                    </span>
+                    <div className="truncate">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-gray-900 truncate">
+                          {doc.label || doc.name || `ডকুমেন্ট ${idx + 1}`}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          ({formatFileSize(doc.blob.size)})
+                        </span>
+                      </div>
+                      {doc.label && doc.label !== doc.name ? (
+                        <span className="text-xs text-gray-500 truncate block">
+                          {doc.name}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <a
-                    href={URL.createObjectURL(doc.blob)}
-                    download={doc.name || 'document'}
-                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 p-2 touch-target"
-                  >
-                    ডাউনলোড
-                  </a>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = URL.createObjectURL(doc.blob);
+                        window.open(url, '_blank');
+                      }}
+                      className="touch-target p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition text-xs font-semibold flex items-center gap-1"
+                      title={bn.photosAndDocs.openDoc}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span className="hidden sm:inline">{bn.photosAndDocs.openDoc}</span>
+                    </button>
+                    <a
+                      href={URL.createObjectURL(doc.blob)}
+                      download={doc.name || 'document'}
+                      className="text-xs font-semibold text-gray-500 hover:text-gray-700 p-2 touch-target"
+                    >
+                      ডাউনলোড
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
@@ -477,24 +535,84 @@ export function PersonDetailScreen({
         </div>
       </main>
 
-      {/* Lightbox / Full Photo Modal */}
+      {/* Lightbox / Full Photo Modal with Swipe & Controls */}
       {activePhotoIndex !== null && person.photos?.[activePhotoIndex] ? (
-        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
-          <button
-            type="button"
-            onClick={() => setActivePhotoIndex(null)}
-            className="touch-target absolute top-4 right-4 p-2 text-white bg-black/50 hover:bg-black/80 rounded-full"
-            aria-label={bn.actions.close}
-          >
-            <X className="w-6 h-6" />
-          </button>
-          <div className="max-w-full max-h-[85vh] overflow-hidden rounded-xl">
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 select-none"
+          onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            if (touchStartX === null || !person.photos) return;
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            if (deltaX > 40 && activePhotoIndex > 0) {
+              setActivePhotoIndex(activePhotoIndex - 1);
+            } else if (deltaX < -40 && activePhotoIndex < person.photos.length - 1) {
+              setActivePhotoIndex(activePhotoIndex + 1);
+            }
+            setTouchStartX(null);
+          }}
+        >
+          {/* Top Bar */}
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between text-white z-10">
+            <div className="flex items-center gap-2">
+              <span className="bg-black/60 px-3 py-1 rounded-full text-xs font-mono">
+                {activePhotoIndex + 1} / {person.photos.length}
+              </span>
+              {person.photos[activePhotoIndex].id === effectiveCoverId ? (
+                <span className="bg-amber-500 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm">
+                  <Star className="w-3 h-3 fill-white" />
+                  {bn.photosAndDocs.coverPhoto}
+                </span>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActivePhotoIndex(null)}
+              className="touch-target p-2 text-white bg-black/60 hover:bg-black/80 rounded-full transition"
+              aria-label={bn.actions.close}
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Left Arrow Button */}
+          {activePhotoIndex > 0 ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePhotoIndex(activePhotoIndex - 1);
+              }}
+              className="touch-target absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition z-10"
+              aria-label={bn.photosAndDocs.prevPhoto}
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+          ) : null}
+
+          {/* Main Image */}
+          <div className="max-w-full max-h-[80vh] overflow-hidden rounded-xl">
             <BlobImage
               blob={person.photos[activePhotoIndex].blob}
               alt={person.name || person.code}
-              className="max-h-[85vh] max-w-full object-contain"
+              className="max-h-[80vh] max-w-full object-contain"
             />
           </div>
+
+          {/* Right Arrow Button */}
+          {activePhotoIndex < person.photos.length - 1 ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePhotoIndex(activePhotoIndex + 1);
+              }}
+              className="touch-target absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition z-10"
+              aria-label={bn.photosAndDocs.nextPhoto}
+            >
+              <ArrowRight className="w-6 h-6" />
+            </button>
+          ) : null}
         </div>
       ) : null}
 

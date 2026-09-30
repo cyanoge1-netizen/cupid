@@ -74,3 +74,45 @@ export function getMediaKind(mime: string): MediaRef['kind'] {
   if (mime.startsWith('text/')) return 'text';
   return 'doc';
 }
+
+/**
+ * Formats byte count to human-readable string (B, KB, MB).
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Checks file sizes against limits (SPEC-UPDATE-1 3.2):
+ * - 15 MB per file warning
+ * - 50 MB total per person warning
+ */
+export function checkMediaLimits(files: MediaRef[]): {
+  hasLargeFile: boolean;
+  isOverTotalLimit: boolean;
+  totalBytes: number;
+  largeFiles: { name: string; sizeStr: string }[];
+} {
+  const SINGLE_FILE_LIMIT = 15 * 1024 * 1024; // 15 MB
+  const TOTAL_PERSON_LIMIT = 50 * 1024 * 1024; // 50 MB
+
+  let totalBytes = 0;
+  const largeFiles: { name: string; sizeStr: string }[] = [];
+
+  for (const f of files) {
+    const size = f.blob.size;
+    totalBytes += size;
+    if (size > SINGLE_FILE_LIMIT) {
+      largeFiles.push({ name: f.name, sizeStr: formatFileSize(size) });
+    }
+  }
+
+  return {
+    hasLargeFile: largeFiles.length > 0,
+    isOverTotalLimit: totalBytes > TOTAL_PERSON_LIMIT,
+    totalBytes,
+    largeFiles,
+  };
+}

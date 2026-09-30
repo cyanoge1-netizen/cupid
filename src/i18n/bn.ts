@@ -290,4 +290,25 @@ export const bn = {
     deletePrompt: 'আপনি কি নিশ্চিত যে এই লেবেলটি মুছতে চান?',
     cannotDeleteUsed: 'এই তথ্যটি ইতিমধ্যে ব্যবহৃত হয়েছে, তাই মোছা যাবে না। এটি লুকিয়ে রাখতে পারেন।',
   },
+
+  // Photos & Docs (SPEC-UPDATE-1 3.1, 3.2)
+  photosAndDocs: {
+    addPhotos: '+ ছবি যোগ করুন',
+    addDocs: '+ ডকুমেন্ট যোগ করুন',
+    coverPhoto: 'কভার ছবি',
+    setAsCover: 'কভার হিসেবে নির্বাচন করুন',
+    photoDeletedNotice: 'ছবি মুছে ফেলা হয়েছে।',
+    docDeletedNotice: 'ডকুমেন্ট মুছে ফেলা হয়েছে।',
+    undo: 'পূর্বাবস্থায় ফেরান',
+    openDoc: 'খুলুন',
+    docLabelPrompt: 'ডকুমেন্টের লেবেল নির্বাচন করুন:',
+    docLabelPlaceholder: 'যেমন: বায়োডাটা PDF, সার্টিফিকেট',
+    saveLabel: 'সংরক্ষণ',
+    warnLargeFile: 'সতর্কতা: "{name}" ফাইলটি ১৫ মেগাবাইটের চেয়ে বড় ({size})।',
+    warnTotalLimit: 'সতর্কতা: মোট ফাইলের আকার ৫০ মেগাবাইটের চেয়ে বেশি ({size})।',
+    emptyPhotos: 'কোনো ছবি যোগ করা হয়নি',
+    emptyDocs: 'কোনো ডকুমেন্ট যোগ করা হয়নি',
+    prevPhoto: 'পূর্ববর্তী ছবি',
+    nextPhoto: 'পরবর্তী ছবি',
+  },
 };
