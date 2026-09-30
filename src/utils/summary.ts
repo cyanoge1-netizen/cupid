@@ -1,5 +1,6 @@
 import type { Person, FieldDef } from '../types';
 import { bn } from '../i18n/bn';
+import { banglaDigitsToEnglish } from './normalizer';
 
 /**
  * Returns formatted education summary (SPEC-UPDATE-1 section 2):
@@ -42,23 +43,33 @@ export interface ShareSummaryOptions {
   redactContact?: boolean;   // scrub phone/email/links in all values (default true)
 }
 
-const SENSITIVE_PATTERNS = [
-  // Bangladeshi mobile numbers: 013-019, with optional +88 / 88, English or Bangla digits
-  /(?:\+?88\s*|৮৮\s*)?01[3-9]\d{8}/g,
-  /(?:\+?88\s*|৮৮\s*)?০১[৩-৯][০-৯]{8}/g,
-  // Generic 11 digit numbers
-  /\b\d{11}\b/g,
-  // Email addresses
-  /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-  // Links: wa.me, facebook.com, fb.com
-  /(?:https?:\/\/)?(?:www\.)?(?:wa\.me|facebook\.com|fb\.com)\/[^\s]+/gi,
-];
-
 export function redactSensitiveText(text: string): string {
-  let cleaned = text;
-  for (const regex of SENSITIVE_PATTERNS) {
-    cleaned = cleaned.replace(regex, '▇▇▇▇');
-  }
+  if (!text) return '';
+  // 1. Normalize Bangla numerals to ASCII digits first
+  let cleaned = banglaDigitsToEnglish(text);
+
+  // 2. Redact email addresses
+  cleaned = cleaned.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '▇▇▇▇');
+
+  // 3. Redact messaging & social links (wa.me, facebook.com, fb.com, t.me, telegram.me, instagram.com, instagr.am)
+  cleaned = cleaned.replace(
+    /(?:https?:\/\/)?(?:www\.)?(?:wa\.me|facebook\.com|fb\.com|t\.me|telegram\.me|instagram\.com|instagr\.am)\/[^\s,।॥]+/gi,
+    '▇▇▇▇'
+  );
+
+  // 4. Redact Bangladeshi mobile numbers with optional country code (+88 / 88 / +880) and separators (spaces, dashes, dots)
+  // E.g.: 01712-345678, 0171 234 5678, +880 1712 345678, +88 01712 345678, 01712.345678, etc.
+  const bdMobilePattern = /(?:\+?\(?88\)?[\s.-]*0?[\s.-]*|0)1[3-9](?:[\s.-]*\d){8}\b/g;
+  cleaned = cleaned.replace(bdMobilePattern, '▇▇▇▇');
+
+  // 5. Redact generic digit runs of 10+ digits with spaces, dashes, or dots without over-redacting
+  // ages (e.g. 28), heights (e.g. 5'6", 5.6), years (e.g. 1998, 2024), or year ranges (e.g. 2018-2022)
+  const genericPhonePattern = /\b(?:\+?\d[\d\s().-]{8,}\d)\b/g;
+  cleaned = cleaned.replace(genericPhonePattern, (match) => {
+    const digitCount = match.replace(/\D/g, '').length;
+    return digitCount >= 10 ? '▇▇▇▇' : match;
+  });
+
   return cleaned;
 }
 
@@ -110,22 +121,39 @@ export function generateBiodataSummary(
       if (person.profession) {
         const prof = redactContact ? redactSensitiveText(person.profession) : person.profession;
         // Only include if something remains after scrubbing
-        if (prof.trim()) lines.push(`${bn.fields.profession}: ${prof}`);
+        if (prof.trim() && !/^▇+$/.test(prof.trim())) lines.push(`${bn.fields.profession}: ${prof}`);
       }
       // Parents — omit entirely if redactParents
       if (!redactParents) {
         if (person.father) lines.push(`${bn.fields.father}: ${person.father}`);
         if (person.mother) lines.push(`${bn.fields.mother}: ${person.mother}`);
       }
-      if (person.district) lines.push(`${bn.fields.district}: ${person.district}`);
-      if (person.upazila) lines.push(`${bn.fields.upazila}: ${person.upazila}`);
-      if (person.postOffice) lines.push(`${bn.fields.postOffice}: ${person.postOffice}`);
+      if (person.district) {
+        const dist = redactContact ? redactSensitiveText(person.district) : person.district;
+        if (dist.trim() && !/^▇+$/.test(dist.trim())) lines.push(`${bn.fields.district}: ${dist}`);
+      }
+      if (person.upazila) {
+        const up = redactContact ? redactSensitiveText(person.upazila) : person.upazila;
+        if (up.trim() && !/^▇+$/.test(up.trim())) lines.push(`${bn.fields.upazila}: ${up}`);
+      }
+      if (person.postOffice) {
+        const po = redactContact ? redactSensitiveText(person.postOffice) : person.postOffice;
+        if (po.trim() && !/^▇+$/.test(po.trim())) lines.push(`${bn.fields.postOffice}: ${po}`);
+      }
       // Village — omit entirely if redactVillage
       if (!redactVillage) {
-        if (person.village) lines.push(`${bn.fields.village}: ${person.village}`);
+        if (person.village) {
+          const vill = redactContact ? redactSensitiveText(person.village) : person.village;
+          if (vill.trim() && !/^▇+$/.test(vill.trim())) lines.push(`${bn.fields.village}: ${vill}`);
+        }
       }
       if (person.tags && person.tags.length > 0) {
-        lines.push(`${bn.fields.tags}: ${person.tags.join(', ')}`);
+        const scrubbedTags = person.tags
+          .map((t) => (redactContact ? redactSensitiveText(t) : t))
+          .filter((t) => t.trim() && !/^▇+$/.test(t.trim()));
+        if (scrubbedTags.length > 0) {
+          lines.push(`${bn.fields.tags}: ${scrubbedTags.join(', ')}`);
+        }
       }
     }
   } else {
