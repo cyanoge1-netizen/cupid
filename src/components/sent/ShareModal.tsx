@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
-import type { Person, Partner, SendLog } from '../../types';
+import { useState, useMemo, useEffect } from 'react';
+import type { Person, Partner, SendLog, FieldDef } from '../../types';
 import { bn } from '../../i18n/bn';
+import { db } from '../../db';
 import { generateBiodataSummary } from '../../utils/summary';
 import { BlobImage } from '../common/BlobImage';
 import {
@@ -12,7 +13,41 @@ import {
   FileText,
   User,
   Send,
+  Star,
 } from 'lucide-react';
+
+const SHARE_PREFS_KEY = 'ghotkali_share_preferences';
+
+interface SharePreferences {
+  includeBasic: boolean;
+  includeEducation: boolean;
+  selectedCustomFieldIds: string[];
+}
+
+function loadSharePrefs(): SharePreferences {
+  try {
+    const raw = localStorage.getItem(SHARE_PREFS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        includeBasic: typeof parsed.includeBasic === 'boolean' ? parsed.includeBasic : true,
+        includeEducation: typeof parsed.includeEducation === 'boolean' ? parsed.includeEducation : true,
+        selectedCustomFieldIds: Array.isArray(parsed.selectedCustomFieldIds) ? parsed.selectedCustomFieldIds : [],
+      };
+    }
+  } catch {}
+  return {
+    includeBasic: true,
+    includeEducation: true,
+    selectedCustomFieldIds: [],
+  };
+}
+
+function saveSharePrefs(prefs: SharePreferences) {
+  try {
+    localStorage.setItem(SHARE_PREFS_KEY, JSON.stringify(prefs));
+  } catch {}
+}
 
 interface ShareModalProps {
   person: Person;
@@ -32,10 +67,33 @@ export function ShareModal({
   // Step 1: Selection screen, Step 2: "কাকে পাঠালেন?" prompt
   const [step, setStep] = useState<'select' | 'log'>('select');
 
-  // Choices: default first photo + text
+  // Preferences for sections (SPEC-UPDATE-1 3.7)
+  const [prefs, setPrefs] = useState<SharePreferences>(loadSharePrefs);
+  const [fieldDefsMap, setFieldDefsMap] = useState<Map<string, FieldDef>>(new Map());
+
+  useEffect(() => {
+    db.fieldDefs.toArray().then((defs) => {
+      const map = new Map<string, FieldDef>();
+      for (const d of defs) {
+        map.set(d.id, d);
+      }
+      setFieldDefsMap(map);
+    });
+  }, []);
+
+  const updatePrefs = (updater: (prev: SharePreferences) => SharePreferences) => {
+    setPrefs((prev) => {
+      const updated = updater(prev);
+      saveSharePrefs(updated);
+      return updated;
+    });
+  };
+
+  // Choices: cover photo selected by default (SPEC-UPDATE-1 3.7)
+  const effectiveCoverId = person.coverPhotoId || (person.photos && person.photos.length > 0 ? person.photos[0].id : undefined);
   const [includeText, setIncludeText] = useState(true);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>(() => {
-    return person.photos && person.photos.length > 0 ? [person.photos[0].id] : [];
+    return effectiveCoverId ? [effectiveCoverId] : [];
   });
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
@@ -44,8 +102,14 @@ export function ShareModal({
   const [isSavingLog, setIsSavingLog] = useState(false);
 
   const formattedSummary = useMemo(
-    () => generateBiodataSummary(person, partner),
-    [person, partner]
+    () =>
+      generateBiodataSummary(person, {
+        includeBasic: prefs.includeBasic,
+        includeEducation: prefs.includeEducation,
+        selectedExtraFieldIds: prefs.selectedCustomFieldIds,
+        fieldDefsMap,
+      }),
+    [person, prefs, fieldDefsMap]
   );
 
   // Extract recent recipients list (unique)
@@ -240,6 +304,80 @@ export function ShareModal({
               <div className="bg-white p-2.5 rounded-lg border border-gray-200 text-xs text-gray-600 font-mono line-clamp-3">
                 {formattedSummary}
               </div>
+
+              {/* Section Checkboxes (SPEC-UPDATE-1 3.7) */}
+              <div className="pt-2 border-t border-gray-200/80 space-y-2">
+                <span className="text-xs font-bold text-gray-700 block">
+                  বিভাগ নির্বাচন:
+                </span>
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={prefs.includeBasic}
+                      onChange={(e) =>
+                        updatePrefs((p) => ({ ...p, includeBasic: e.target.checked }))
+                      }
+                      className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                    />
+                    <span>{bn.sent.sectionBasic}</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={prefs.includeEducation}
+                      onChange={(e) =>
+                        updatePrefs((p) => ({ ...p, includeEducation: e.target.checked }))
+                      }
+                      className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                    />
+                    <span>{bn.sent.sectionEducation}</span>
+                  </label>
+                </div>
+
+                {person.extra && person.extra.length > 0 ? (
+                  <div className="pt-1.5 space-y-1.5">
+                    <span className="text-[11px] font-semibold text-gray-500 block">
+                      {bn.sent.sectionCustomFields} (ব্যক্তিগতভাবে নির্বাচনযোগ্য):
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto">
+                      {person.extra.map((item) => {
+                        const def = fieldDefsMap.get(item.fieldId);
+                        const label = def?.label || item.fieldId;
+                        const isChecked = prefs.selectedCustomFieldIds.includes(item.fieldId);
+
+                        return (
+                          <label
+                            key={item.fieldId}
+                            className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-xs cursor-pointer transition ${
+                              isChecked
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-medium'
+                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                updatePrefs((p) => ({
+                                  ...p,
+                                  selectedCustomFieldIds: checked
+                                    ? [...p.selectedCustomFieldIds, item.fieldId]
+                                    : p.selectedCustomFieldIds.filter((id) => id !== item.fieldId),
+                                }));
+                              }}
+                              className="w-3.5 h-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                            />
+                            <span className="truncate">{label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             {/* Photos Selection */}
@@ -254,6 +392,8 @@ export function ShareModal({
                 <div className="grid grid-cols-3 gap-2">
                   {person.photos.map((photo) => {
                     const isSelected = selectedPhotoIds.includes(photo.id);
+                    const isCover = photo.id === effectiveCoverId;
+
                     return (
                       <div
                         key={photo.id}
@@ -270,6 +410,14 @@ export function ShareModal({
                           className="w-full h-full"
                           fallbackIcon={<User className="w-6 h-6 text-gray-300" />}
                         />
+                        {isCover ? (
+                          <div
+                            className="absolute top-1 left-1 bg-amber-500 text-white rounded-full p-0.5 shadow-sm"
+                            title={bn.photosAndDocs.coverPhoto}
+                          >
+                            <Star className="w-3 h-3 fill-white" />
+                          </div>
+                        ) : null}
                         {isSelected ? (
                           <div className="absolute top-1 right-1 bg-emerald-600 text-white rounded-full p-0.5">
                             <Check className="w-3.5 h-3.5" />
@@ -307,11 +455,19 @@ export function ShareModal({
                           className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
                         />
                         <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="truncate">{doc.name}</span>
+                        <span className="truncate">{doc.label || doc.name}</span>
                       </label>
                     );
                   })}
                 </div>
+
+                {/* Document Privacy Notice (SPEC-UPDATE-1 3.7) */}
+                {selectedDocIds.length > 0 ? (
+                  <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2.5 text-xs font-semibold text-amber-900">
+                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <span>{bn.sent.docPrivacyNotice}</span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

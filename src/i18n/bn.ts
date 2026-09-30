@@ -193,6 +193,10 @@ export const bn = {
     includePhotos: 'ছবি অন্তর্ভুক্ত করুন ({count}টি)',
     shareViaWhatsApp: 'হোয়াটসঅ্যাপে শেয়ার করুন',
     copySummaryText: 'সারসংক্ষেপ কপি করুন',
+    sectionBasic: 'মূল তথ্য',
+    sectionEducation: 'শিক্ষা',
+    sectionCustomFields: 'কাস্টম তথ্যসমূহ',
+    docPrivacyNotice: 'সতর্কতা: মূল ফাইলে প্রার্থীর মোবাইল নম্বর বা পূর্ণ ঠিকানা থাকতে পারে।',
   },
 
   // Delete & Trash
