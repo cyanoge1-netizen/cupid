@@ -3,8 +3,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Set Vite base from env var for GitHub Pages (SPEC 3 & 12)
-const base = process.env.BASE_URL || process.env.VITE_BASE || './';
+// Use only VITE_BASE for the base path
+const base = process.env.VITE_BASE || './';
 const normalizedBase = base.endsWith('/') ? base : `${base}/`;
 const manifestScope = base === './' ? './' : normalizedBase;
 const shareAction = base === './' ? './share' : `${normalizedBase}share`;
@@ -23,6 +23,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       },
       manifest: {
+        id: manifestScope,
         name: 'ঘটকালি (Ghotkali)',
         short_name: 'ঘটকালি',
         description: 'বায়োডাটা ম্যানেজমেন্ট অ্যাপ',
@@ -34,10 +35,22 @@ export default defineConfig({
         start_url: manifestScope,
         icons: [
           {
-            src: 'icon.svg',
-            sizes: '192x192 512x512',
-            type: 'image/svg+xml',
-            purpose: 'any maskable'
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ],
         share_target: {

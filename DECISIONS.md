@@ -52,3 +52,10 @@ This document records architectural, technical, and UX design decisions made dur
 ## 8. App Lock (SPEC 5.12)
 - 4-digit numeric PIN is securely hashed using `SubtleCrypto` PBKDF2 with SHA-256, 100,000 iterations, and a unique 16-byte random cryptographic salt.
 - The app locks on initial launch and whenever the app has been in the background for more than 2 minutes (`visibilitychange` check).
+
+## 9. Web Share Target Redirection via `?tab=inbox&shared=1` (SPEC 7)
+- In the Service Worker share target handler, responding with `Response.redirect(new URL('./?tab=inbox&shared=1', event.request.url).href, 303)` was chosen instead of a direct path redirect like `/inbox?shared=1`.
+- **Rationale**:
+  1. **GitHub Pages & Static Hosting Compatibility**: Static hosts serve single-page applications without server-side rewrite rules. Requesting a path like `/<repo>/inbox` directly from the browser would result in an HTTP 404 Not Found.
+  2. **Base-Relative Resolution**: Resolving `./?tab=inbox&shared=1` against `event.request.url` produces a fully qualified URL regardless of whether the app is hosted at root domain (`/`), in a subfolder (`/<repo-name>/`), or behind a dev tunnel.
+  3. **Seamless Client State Hydration**: On launch or redirect, `App.tsx` inspects `URLSearchParams` for `shared=1` and `tab=inbox`, sets active tab to Inbox, triggers the "ইনবক্সে জমা হয়েছে" source prompt, and cleans up the browser address bar cleanly using `window.history.replaceState`.

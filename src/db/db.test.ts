@@ -160,49 +160,12 @@ describe('Database and Code Generator', () => {
       expect(parsed2.counter).toBeGreaterThan(parsed1.counter);
     });
 
-    it('confirms createPerson generates the code inside the same transaction', async () => {
-      // Get initial counter
-      const metaBefore = await testDb.meta.get('counter:B');
-      const countBefore = (metaBefore?.value as number) || 0;
-
-      // Verify createPerson runs inside an atomic transaction:
-      // If any error occurs inside the transaction block before commit,
-      // Dexie rolls back all changes to both people table and meta table
-      await expect(
-        testDb.transaction('rw', testDb.people, testDb.meta, async () => {
-          const counterKey = 'counter:B';
-          const metaRecord = await testDb.meta.get(counterKey);
-          const current = typeof metaRecord?.value === 'number' ? metaRecord.value : 0;
-          await testDb.meta.put({ key: counterKey, value: current + 1 });
-
-          // Also insert a test person
-          await testDb.people.add({
-            id: 'failing-id',
-            code: 'B-9999',
-            gender: 'B',
-            tags: [],
-            status: 'active',
-            sourceId: null,
-            photos: [],
-            docs: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          });
-
-          // Abort transaction deliberately
-          throw new Error('Simulated abort');
-        })
-      ).rejects.toThrow('Simulated abort');
-
-      // Meta and people tables must not have modified values due to rollback
-      const metaAfterAbort = await testDb.meta.get('counter:B');
-      expect(metaAfterAbort?.value).toBe(countBefore || undefined);
-      expect(await testDb.people.get('failing-id')).toBeUndefined();
-
-      // Successful atomic creation:
-      const p = await createPerson({
+    it('confirms createPerson generates the code inside the same transaction and rolls back on error', async () => {
+      // 1. Create an initial person
+      const p1 = await createPerson({
+        id: 'fixed-existing-id',
         gender: 'B',
-        name: 'Atomic Bride',
+        name: 'Initial Bride',
         tags: [],
         status: 'active',
         sourceId: null,
@@ -210,9 +173,57 @@ describe('Database and Code Generator', () => {
         docs: [],
       }, testDb);
 
-      expect(p.code).toBe(`B-${String(countBefore + 1).padStart(4, '0')}`);
-      const metaAfterSuccess = await testDb.meta.get('counter:B');
-      expect(metaAfterSuccess?.value).toBe(countBefore + 1);
+      expect(p1.code).toBe('B-0001');
+
+      const metaBefore = await testDb.meta.get('counter:B');
+      expect(metaBefore?.value).toBe(1);
+      const peopleBefore = await testDb.people.toArray();
+      expect(peopleBefore).toHaveLength(1);
+
+      // 2. Call createPerson with duplicate primary key 'fixed-existing-id'
+      // This forces an error inside createPerson transaction at table.add(),
+      // AFTER the counter was incremented in memory
+      let errorThrown: any = null;
+      try {
+        await createPerson({
+          id: 'fixed-existing-id', // duplicate ID will cause people.add() to reject
+          gender: 'B',
+          name: 'Conflicting Bride',
+          tags: [],
+          status: 'active',
+          sourceId: null,
+          photos: [],
+          docs: [],
+        }, testDb);
+      } catch (err) {
+        errorThrown = err;
+      }
+
+      expect(errorThrown).toBeDefined();
+
+      // 3. Assert counter and people table are completely unchanged afterwards
+      const metaAfter = await testDb.meta.get('counter:B');
+      expect(metaAfter?.value).toBe(1); // Not 2! Counter rolled back atomically
+
+      const peopleAfter = await testDb.people.toArray();
+      expect(peopleAfter).toHaveLength(1); // No new person inserted
+      expect(peopleAfter[0].name).toBe('Initial Bride'); // Unchanged
+
+      // 4. Verify subsequent createPerson succeeds with the correct next sequential code
+      const p2 = await createPerson({
+        gender: 'B',
+        name: 'Subsequent Bride',
+        tags: [],
+        status: 'active',
+        sourceId: null,
+        photos: [],
+        docs: [],
+      }, testDb);
+
+      expect(p2.code).toBe('B-0002');
+      const metaFinal = await testDb.meta.get('counter:B');
+      expect(metaFinal?.value).toBe(2);
+      expect(await testDb.people.toArray()).toHaveLength(2);
     });
   });
 
