@@ -2,7 +2,7 @@ import type { Person, Partner } from '../../types';
 import { StatusBadge } from '../common/StatusBadge';
 import { PartnerBadge } from '../common/PartnerBadge';
 import { BlobImage } from '../common/BlobImage';
-import { Share2, User } from 'lucide-react';
+import { Share2, User, Phone, MessageCircle } from 'lucide-react';
 import { bn } from '../../i18n/bn';
 import { educationSummary } from '../../utils/summary';
 
@@ -18,6 +18,23 @@ export function PersonCard({ person, partner, onSelect, onShare }: PersonCardPro
     person.photos?.find((p) => p.id === person.coverPhotoId) || person.photos?.[0];
   const photoBlob = coverPhoto?.thumb || coverPhoto?.blob;
   const edu = educationSummary(person);
+  const contactPhone = partner?.phone || person.phone;
+
+  const handleCall = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (contactPhone) {
+      window.location.href = `tel:${contactPhone}`;
+    }
+  };
+
+  const handleWhatsApp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (contactPhone) {
+      const cleanDigits = contactPhone.replace(/\D/g, '');
+      const waNumber = cleanDigits.startsWith('88') ? cleanDigits : `88${cleanDigits}`;
+      window.open(`https://wa.me/${waNumber}`, '_blank');
+    }
+  };
 
   return (
     <div
@@ -87,6 +104,28 @@ export function PersonCard({ person, partner, onSelect, onShare }: PersonCardPro
           ) : null}
         </div>
       </div>
+
+      {/* Call & WhatsApp Quick Buttons (just like PartnerCard) */}
+      {contactPhone ? (
+        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={handleCall}
+            className="touch-target flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs sm:text-sm font-semibold transition"
+          >
+            <Phone className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{bn.actions.call}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleWhatsApp}
+            className="touch-target flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs sm:text-sm font-semibold transition"
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{bn.actions.whatsapp}</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

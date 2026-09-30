@@ -311,5 +311,31 @@ describe('Search Functionality - Six Cases from SPEC 5.9', () => {
       expect(resDoc).toHaveLength(1);
       expect(resDoc[0].person.code).toBe('B-0201');
     });
+
+    it('finds a person by post office (ডাকঘর) or full contact phone', () => {
+      const personWithPO: Person = {
+        id: 'p-po',
+        code: 'B-0300',
+        gender: 'B',
+        name: 'রুমানা আহমেদ',
+        postOffice: 'ব্রাহ্মণবাজার',
+        phone: '01799887766',
+        status: 'active',
+        sourceId: null,
+        tags: [],
+        photos: [],
+        docs: [],
+        createdAt: 3000,
+        updatedAt: 3000,
+      };
+
+      const resPO = searchPeople('ব্রাহ্মণবাজার', [personWithPO]);
+      expect(resPO).toHaveLength(1);
+      expect(resPO[0].person.code).toBe('B-0300');
+
+      const resPhone = searchPeople('01799887766', [personWithPO]);
+      expect(resPhone).toHaveLength(1);
+      expect(resPhone[0].person.code).toBe('B-0300');
+    });
   });
 });

@@ -23,7 +23,11 @@ import {
   History,
   Star,
   ExternalLink,
+  Phone,
+  MessageCircle,
+  Plus,
 } from 'lucide-react';
+import { getPartnerColor } from '../../utils/colors';
 
 interface PersonDetailScreenProps {
   person: Person;
@@ -244,11 +248,120 @@ export function PersonDetailScreen({
           ) : null}
         </div>
 
+        {/* Partner / Source Card with Call & WhatsApp Buttons */}
+        {partner ? (
+          <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`w-4 h-4 rounded-full ${getPartnerColor(partner.id).bg} border ${getPartnerColor(partner.id).border}`}
+                />
+                <div>
+                  <span className="text-xs text-gray-500 block">
+                    {bn.source.suppliedBy} / {bn.source.partner}
+                  </span>
+                  <h3 className="font-bold text-lg text-gray-900">{partner.name}</h3>
+                </div>
+              </div>
+              {partner.area ? (
+                <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg font-medium">
+                  {partner.area}
+                </span>
+              ) : null}
+            </div>
+
+            {partner.note ? (
+              <p className="text-xs text-gray-500 whitespace-pre-wrap">{partner.note}</p>
+            ) : null}
+
+            {partner.phone ? (
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = `tel:${partner.phone}`;
+                  }}
+                  className="touch-target flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-sm font-semibold transition"
+                >
+                  <Phone className="w-4 h-4 text-emerald-600" />
+                  <span>{bn.actions.call} ({partner.phone})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleanDigits = partner.phone!.replace(/\D/g, '');
+                    const waNumber = cleanDigits.startsWith('88') ? cleanDigits : `88${cleanDigits}`;
+                    window.open(`https://wa.me/${waNumber}`, '_blank');
+                  }}
+                  className="touch-target flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-sm font-semibold transition"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  <span>{bn.actions.whatsapp}</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Candidate Direct Phone with Call & WhatsApp (if available) */}
+        {person.phone ? (
+          <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-2">
+            <div>
+              <span className="text-xs text-gray-500 block">{bn.fields.phone}</span>
+              <span className="font-bold text-base text-gray-900 font-mono">{person.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = `tel:${person.phone}`;
+                }}
+                className="touch-target flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-sm font-semibold transition"
+              >
+                <Phone className="w-4 h-4 text-emerald-600" />
+                <span>{bn.actions.call}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cleanDigits = person.phone!.replace(/\D/g, '');
+                  const waNumber = cleanDigits.startsWith('88') ? cleanDigits : `88${cleanDigits}`;
+                  window.open(`https://wa.me/${waNumber}`, '_blank');
+                }}
+                className="touch-target flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-sm font-semibold transition"
+              >
+                <MessageCircle className="w-4 h-4 text-emerald-600" />
+                <span>{bn.actions.whatsapp}</span>
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Detailed Information Card */}
         <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">
-            বিস্তারিত তথ্য
-          </h2>
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h2 className="text-lg font-bold text-gray-900">
+              বিস্তারিত তথ্য
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="touch-target flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-xl transition"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>সম্পাদনা</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="touch-target flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-xl transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>তথ্য যোগ করুন</span>
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-base">
             <div>
@@ -280,6 +393,13 @@ export function PersonDetailScreen({
             </div>
 
             <div>
+              <span className="text-sm text-gray-500 block">{bn.fields.postOffice}</span>
+              <span className="font-medium text-gray-800">
+                {person.postOffice || '—'}
+              </span>
+            </div>
+
+            <div>
               <span className="text-sm text-gray-500 block">{bn.fields.village}</span>
               <span className="font-medium text-gray-800">
                 {person.village || '—'}
@@ -289,7 +409,7 @@ export function PersonDetailScreen({
             <div>
               <span className="text-sm text-gray-500 block">{bn.fields.phoneLast4}</span>
               <span className="font-medium text-gray-800 font-mono">
-                {person.phoneLast4 ? `***${person.phoneLast4}` : '—'}
+                {person.phone ? person.phone : (person.phoneLast4 ? `***${person.phoneLast4}` : '—')}
               </span>
             </div>
 
@@ -393,9 +513,19 @@ export function PersonDetailScreen({
               key={sec}
               className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-3"
             >
-              <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">
-                {secName}
-              </h2>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h2 className="text-lg font-bold text-gray-900">
+                  {secName}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="touch-target flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-xl transition"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>সম্পাদনা</span>
+                </button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-base">
                 {secValues.map((item) => {
                   const def = fieldDefsMap.get(item.fieldId);

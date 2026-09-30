@@ -61,6 +61,7 @@ export interface Person {
   father?: string;
   mother?: string;
   village?: string;
+  postOffice?: string; // ডাকঘর
   upazila?: string;
   district?: string;
   age?: number;
@@ -68,6 +69,7 @@ export interface Person {
   education?: string; // deprecated, kept for backwards compatibility
   educations?: EducationEntry[];
   profession?: string;
+  phone?: string; // contact phone / mobile number
   phoneLast4?: string; // last 4 digits of contact number, for duplicate checks only
   memo?: string; // free-text notes
   tags: string[];

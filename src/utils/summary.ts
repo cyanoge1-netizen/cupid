@@ -67,6 +67,7 @@ export function generateBiodataSummary(
     if (person.mother) lines.push(`${bn.fields.mother}: ${person.mother}`);
     if (person.district) lines.push(`${bn.fields.district}: ${person.district}`);
     if (person.upazila) lines.push(`${bn.fields.upazila}: ${person.upazila}`);
+    if (person.postOffice) lines.push(`${bn.fields.postOffice}: ${person.postOffice}`);
     if (person.village) lines.push(`${bn.fields.village}: ${person.village}`);
     if (person.tags && person.tags.length > 0) {
       lines.push(`${bn.fields.tags}: ${person.tags.join(', ')}`);

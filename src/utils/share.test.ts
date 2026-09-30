@@ -17,7 +17,9 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     mother: 'শামীমা বেগম',
     district: 'সিলেট',
     upazila: 'বিয়ানীবাজার',
+    postOffice: 'চারখাই বাজার',
     village: 'চারখাই',
+    phone: '01711223344', // MUST NEVER BE SHARED
     phoneLast4: '4321', // MUST NEVER BE SHARED
     memo: 'গোপনীয় মেমো ও ব্যক্তিগত নোট', // MUST NEVER BE SHARED
     sourceId: 'partner-123', // MUST NEVER BE SHARED
@@ -72,10 +74,11 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     ],
   ]);
 
-  it('never includes phoneLast4, memo, source, or status in shared text', () => {
+  it('never includes phoneLast4, phone, memo, source, or status in shared text', () => {
     const summary = generateBiodataSummary(mockPerson);
 
     expect(summary).not.toContain('4321');
+    expect(summary).not.toContain('01711223344');
     expect(summary).not.toContain('গোপনীয় মেমো');
     expect(summary).not.toContain('partner-123');
     expect(summary).not.toContain('active');
@@ -89,6 +92,7 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     expect(summary).toContain('রাতুল');
     expect(summary).toContain('28 বছর');
     expect(summary).toContain('সফটওয়্যার ইঞ্জিনিয়ার');
+    expect(summary).toContain('চারখাই বাজার');
     expect(summary).toContain('বিএসসি (সিলেট ইঞ্জিনিয়ারিং কলেজ), এইচএসসি (এমসি কলেজ)');
   });
 

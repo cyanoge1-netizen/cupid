@@ -52,6 +52,7 @@ export function ProcessItemScreen({
   const [mother, setMother] = useState(parsed.mother || '');
   const [district, setDistrict] = useState(parsed.district || '');
   const [upazila, setUpazila] = useState(parsed.upazila || '');
+  const [postOffice, setPostOffice] = useState(parsed.postOffice || '');
   const [village, setVillage] = useState(parsed.village || '');
   const [age, setAge] = useState(parsed.age ? String(parsed.age) : '');
   const [height, setHeight] = useState(parsed.height || '');
@@ -144,6 +145,7 @@ export function ProcessItemScreen({
   };
 
   const [profession, setProfession] = useState(parsed.profession || '');
+  const [phone, setPhone] = useState(parsed.phone || '');
   const [phoneLast4, setPhoneLast4] = useState(parsed.phoneLast4 || '');
   const [memo, setMemo] = useState('');
   const [tagsStr, setTagsStr] = useState('');
@@ -276,6 +278,7 @@ export function ProcessItemScreen({
         mother: mother.trim() || undefined,
         district: district.trim() || undefined,
         upazila: upazila.trim() || undefined,
+        postOffice: postOffice.trim() || undefined,
         village: village.trim() || undefined,
         age: isNaN(Number(parsedAge)) ? undefined : parsedAge,
         height: height.trim() || undefined,
@@ -283,7 +286,8 @@ export function ProcessItemScreen({
         educations: validEducations,
         extra: extra.length > 0 ? extra : undefined,
         profession: profession.trim() || undefined,
-        phoneLast4: phoneLast4.trim() ? phoneLast4.trim().slice(-4) : undefined,
+        phone: phone.trim() || undefined,
+        phoneLast4: phone.trim() ? phone.trim().slice(-4) : (phoneLast4.trim() ? phoneLast4.trim().slice(-4) : undefined),
         memo: memo.trim() || undefined,
         tags: parsedTags,
         status: 'active',
@@ -514,7 +518,7 @@ export function ProcessItemScreen({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 {bn.fields.district}
@@ -537,6 +541,19 @@ export function ProcessItemScreen({
                 value={upazila}
                 onChange={(e) => setUpazila(e.target.value)}
                 placeholder="উপজেলা / থানা"
+                className="w-full min-h-[48px] px-3.5 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                {bn.fields.postOffice}
+              </label>
+              <input
+                type="text"
+                value={postOffice}
+                onChange={(e) => setPostOffice(e.target.value)}
+                placeholder="ডাকঘর"
                 className="w-full min-h-[48px] px-3.5 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
               />
             </div>
@@ -584,15 +601,18 @@ export function ProcessItemScreen({
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                {bn.fields.phoneLast4}
+                {bn.fields.phone}
               </label>
               <input
-                type="text"
-                maxLength={4}
-                value={phoneLast4}
-                onChange={(e) => setPhoneLast4(e.target.value)}
-                placeholder="শেষ ৪ ডিজিট"
-                className="w-full min-h-[48px] px-3.5 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
+                type="tel"
+                value={phone}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPhone(val);
+                  setPhoneLast4(val.trim() ? val.trim().slice(-4) : '');
+                }}
+                placeholder="০১৭xxxxxxxx"
+                className="w-full min-h-[48px] px-3.5 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base font-mono"
               />
             </div>
           </div>

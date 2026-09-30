@@ -11,11 +11,13 @@ export interface ParsedBiodata {
   mother?: string;
   district?: string;
   upazila?: string;
+  postOffice?: string;
   village?: string;
   age?: number;
   height?: string;
   education?: string;
   profession?: string;
+  phone?: string;
   phoneLast4?: string;
   rawText: string;
   leftovers?: ParserLeftover[];
@@ -35,7 +37,7 @@ export function splitEducationText(text: string): string[] {
 
 // Ordered label patterns: more specific labels first
 const LABEL_RULES: Array<{
-  field: keyof Omit<ParsedBiodata, 'age' | 'rawText' | 'phoneLast4'> | 'age' | 'phone';
+  field: keyof Omit<ParsedBiodata, 'age' | 'rawText' | 'phoneLast4' | 'phone'> | 'age' | 'phone';
   labels: string[];
 }> = [
   { field: 'father', labels: ['পিতার নাম', 'বাবার নাম', "father's name", 'father name', 'father'] },
@@ -44,6 +46,7 @@ const LABEL_RULES: Array<{
   { field: 'profession', labels: ['পেশা', 'occupation', 'profession', 'job'] },
   { field: 'upazila', labels: ['উপজেলা', 'থানা', 'upazila', 'thana', 'police station'] },
   { field: 'district', labels: ['জেলা', 'district'] },
+  { field: 'postOffice', labels: ['ডাকঘর', 'পোস্ট অফিস', 'পোস্টঅফিস', 'পোঃ', 'পোস্ট', 'post office', 'p.o.', 'po'] },
   { field: 'village', labels: ['গ্রাম', 'ঠিকানা', 'village', 'address'] },
   { field: 'height', labels: ['উচ্চতা', 'height'] },
   { field: 'age', labels: ['বয়স', 'age'] },
@@ -128,6 +131,9 @@ export function parseBiodataText(rawInput: string): ParsedBiodata {
             }
           }
         } else if (rule.field === 'phone') {
+          if (!result.phone) {
+            result.phone = rawVal;
+          }
           if (!result.phoneLast4) {
             const digits = banglaDigitsToEnglish(rawVal).replace(/\D/g, '');
             if (digits.length >= 4) {
@@ -135,7 +141,7 @@ export function parseBiodataText(rawInput: string): ParsedBiodata {
             }
           }
         } else {
-          const currentField = rule.field as keyof Omit<ParsedBiodata, 'age' | 'rawText' | 'phoneLast4' | 'leftovers'>;
+          const currentField = rule.field as keyof Omit<ParsedBiodata, 'age' | 'rawText' | 'phoneLast4' | 'phone' | 'leftovers'>;
           if (!result[currentField]) {
             result[currentField] = rawVal;
           }
@@ -160,6 +166,9 @@ export function parseBiodataText(rawInput: string): ParsedBiodata {
       const cleanDigits = phoneMatch[0].replace(/\D/g, '');
       if (cleanDigits.length >= 10) {
         result.phoneLast4 = cleanDigits.slice(-4);
+        if (!result.phone) {
+          result.phone = cleanDigits.startsWith('88') ? cleanDigits.slice(2) : cleanDigits;
+        }
       }
     }
   }

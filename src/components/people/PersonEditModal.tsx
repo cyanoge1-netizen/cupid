@@ -28,11 +28,13 @@ export function PersonEditModal({
   const [father, setFather] = useState(person.father || '');
   const [mother, setMother] = useState(person.mother || '');
   const [village, setVillage] = useState(person.village || '');
+  const [postOffice, setPostOffice] = useState(person.postOffice || '');
   const [upazila, setUpazila] = useState(person.upazila || '');
   const [district, setDistrict] = useState(person.district || '');
   const [age, setAge] = useState(person.age ? String(person.age) : '');
   const [height, setHeight] = useState(person.height || '');
   const [profession, setProfession] = useState(person.profession || '');
+  const [phone, setPhone] = useState(person.phone || '');
   const [phoneLast4, setPhoneLast4] = useState(person.phoneLast4 || '');
   const [memo, setMemo] = useState(person.memo || '');
   const [tagsStr, setTagsStr] = useState(person.tags ? person.tags.join(', ') : '');
@@ -190,6 +192,7 @@ export function PersonEditModal({
         father: father.trim() || undefined,
         mother: mother.trim() || undefined,
         village: village.trim() || undefined,
+        postOffice: postOffice.trim() || undefined,
         upazila: upazila.trim() || undefined,
         district: district.trim() || undefined,
         age: isNaN(Number(parsedAge)) ? undefined : parsedAge,
@@ -197,7 +200,8 @@ export function PersonEditModal({
         educations: validEducations,
         extra: validExtra,
         profession: profession.trim() || undefined,
-        phoneLast4: phoneLast4.trim() ? phoneLast4.trim().slice(-4) : undefined,
+        phone: phone.trim() || undefined,
+        phoneLast4: phone.trim() ? phone.trim().slice(-4) : (phoneLast4.trim() ? phoneLast4.trim().slice(-4) : undefined),
         memo: memo.trim() || undefined,
         tags: parsedTags,
         sourceId,
@@ -403,7 +407,8 @@ export function PersonEditModal({
                 </div>
 
                 {/* District, Upazila, Village */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* District, Upazila, PostOffice, Village */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
                       {bn.fields.district}
@@ -428,6 +433,18 @@ export function PersonEditModal({
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      {bn.fields.postOffice}
+                    </label>
+                    <input
+                      type="text"
+                      value={postOffice}
+                      onChange={(e) => setPostOffice(e.target.value)}
+                      placeholder="ডাকঘর"
+                      className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
                       {bn.fields.village}
                     </label>
                     <input
@@ -439,7 +456,7 @@ export function PersonEditModal({
                   </div>
                 </div>
 
-                {/* Age, Height, PhoneLast4 */}
+                {/* Age, Height, Phone */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -465,15 +482,18 @@ export function PersonEditModal({
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      {bn.fields.phoneLast4}
+                      {bn.fields.phone}
                     </label>
                     <input
-                      type="text"
-                      maxLength={4}
-                      value={phoneLast4}
-                      onChange={(e) => setPhoneLast4(e.target.value)}
-                      placeholder="1234"
-                      className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPhone(val);
+                        setPhoneLast4(val.trim() ? val.trim().slice(-4) : '');
+                      }}
+                      placeholder="০১৭xxxxxxxx"
+                      className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base font-mono"
                     />
                   </div>
                 </div>
@@ -502,6 +522,18 @@ export function PersonEditModal({
                     onChange={(e) => setTagsStr(e.target.value)}
                     className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
                   />
+                </div>
+
+                {/* Quick Add Custom Field inside Section 1 */}
+                <div className="pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setActiveAddSection('other')}
+                    className="touch-target inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-dashed border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 text-sm font-semibold transition w-full justify-center"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-600" />
+                    <span>{bn.customFields.addInfo}</span>
+                  </button>
                 </div>
               </div>
             )}

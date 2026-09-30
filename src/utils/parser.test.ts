@@ -178,4 +178,23 @@ Contact: 01811223344
       expect(match2?.label).toBe('শখ');
     });
   });
+
+  it('correctly parses post office (ডাকঘর) and contact phone', () => {
+    const text = `
+নাম: সাদিকুর রহমান
+জেলা: মৌলভীবাজার
+উপজেলা: কুলাউড়া
+ডাকঘর: ব্রাহ্মণবাজার
+গ্রাম: মির্জাপুর
+মোবাইল নম্বর: ০১৭০০১১২২৩৩
+`;
+    const parsed = parseBiodataText(text);
+    expect(parsed.name).toBe('সাদিকুর রহমান');
+    expect(parsed.district).toBe('মৌলভীবাজার');
+    expect(parsed.upazila).toBe('কুলাউড়া');
+    expect(parsed.postOffice).toBe('ব্রাহ্মণবাজার');
+    expect(parsed.village).toBe('মির্জাপুর');
+    expect(parsed.phone).toBe('01700112233');
+    expect(parsed.phoneLast4).toBe('2233');
+  });
 });
