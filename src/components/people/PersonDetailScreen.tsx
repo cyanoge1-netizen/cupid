@@ -256,12 +256,51 @@ export function PersonDetailScreen({
               </span>
             </div>
 
-            <div>
-              <span className="text-sm text-gray-500 block">{bn.fields.education}</span>
-              <span className="font-medium text-gray-800">
-                {person.education || '—'}
-              </span>
-            </div>
+            {person.educations && person.educations.length > 0 ? (
+              <div className="sm:col-span-2">
+                <span className="text-sm text-gray-500 block mb-2">{bn.fields.education}</span>
+                <div className="space-y-2">
+                  {person.educations.map((edu, idx) => (
+                    <div
+                      key={edu.id || idx}
+                      className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 text-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-gray-900">
+                          {edu.level}
+                          {edu.status === 'ongoing' ? (
+                            <span className="ml-2 text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                              {bn.education.statusOngoing}
+                            </span>
+                          ) : null}
+                        </span>
+                        {edu.year ? <span className="text-xs text-gray-500">{edu.year}</span> : null}
+                      </div>
+                      {edu.subject || edu.institution ? (
+                        <p className="text-gray-600 mt-1">
+                          {[edu.subject, edu.institution].filter(Boolean).join(' • ')}
+                        </p>
+                      ) : null}
+                      {edu.result ? (
+                        <p className="text-xs text-emerald-700 mt-0.5 font-medium">
+                          {bn.education.result}: {edu.result}
+                        </p>
+                      ) : null}
+                      {edu.note ? (
+                        <p className="text-xs text-gray-500 mt-1 italic">{edu.note}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <span className="text-sm text-gray-500 block">{bn.fields.education}</span>
+                <span className="font-medium text-gray-800">
+                  {person.education || '—'}
+                </span>
+              </div>
+            )}
           </div>
 
           {person.memo ? (

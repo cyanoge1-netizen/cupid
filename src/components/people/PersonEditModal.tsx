@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import type { Person, Partner } from '../../types';
+import type { Person, Partner, EducationEntry } from '../../types';
 import { bn } from '../../i18n/bn';
 import { X } from 'lucide-react';
+import { EducationEditor } from './EducationEditor';
+import { recordSuggestion } from '../../utils/catalog';
 
 interface PersonEditModalProps {
   person: Person;
@@ -25,7 +27,20 @@ export function PersonEditModal({
   const [district, setDistrict] = useState(person.district || '');
   const [age, setAge] = useState(person.age ? String(person.age) : '');
   const [height, setHeight] = useState(person.height || '');
-  const [education, setEducation] = useState(person.education || '');
+  const [educations, setEducations] = useState<EducationEntry[]>(() => {
+    if (person.educations && person.educations.length > 0) {
+      return person.educations;
+    }
+    if (person.education && person.education.trim()) {
+      return [
+        {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+          level: person.education.trim(),
+        },
+      ];
+    }
+    return [];
+  });
   const [profession, setProfession] = useState(person.profession || '');
   const [phoneLast4, setPhoneLast4] = useState(person.phoneLast4 || '');
   const [memo, setMemo] = useState(person.memo || '');
@@ -43,6 +58,25 @@ export function PersonEditModal({
         .map((t) => t.trim())
         .filter(Boolean);
 
+      const validEducations = educations
+        .map((e) => ({
+          ...e,
+          level: e.level.trim(),
+          subject: e.subject?.trim() || undefined,
+          institution: e.institution?.trim() || undefined,
+          result: e.result?.trim() || undefined,
+          year: e.year?.trim() || undefined,
+          note: e.note?.trim() || undefined,
+        }))
+        .filter((e) => e.level.length > 0);
+
+      // Record suggestions for education levels (SPEC-UPDATE-1 3.3)
+      for (const edu of validEducations) {
+        if (edu.level) {
+          recordSuggestion('eduLevel', edu.level).catch(() => {});
+        }
+      }
+
       await onSave({
         name: name.trim() || undefined,
         alias: alias.trim() || undefined,
@@ -53,7 +87,7 @@ export function PersonEditModal({
         district: district.trim() || undefined,
         age: isNaN(Number(parsedAge)) ? undefined : parsedAge,
         height: height.trim() || undefined,
-        education: education.trim() || undefined,
+        educations: validEducations,
         profession: profession.trim() || undefined,
         phoneLast4: phoneLast4.trim() ? phoneLast4.trim().slice(-4) : undefined,
         memo: memo.trim() || undefined,
@@ -250,30 +284,25 @@ export function PersonEditModal({
             </div>
           </div>
 
-          {/* Profession & Education */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                {bn.fields.profession}
-              </label>
-              <input
-                type="text"
-                value={profession}
-                onChange={(e) => setProfession(e.target.value)}
-                className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                {bn.fields.education}
-              </label>
-              <input
-                type="text"
-                value={education}
-                onChange={(e) => setEducation(e.target.value)}
-                className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
-              />
-            </div>
+          {/* Profession */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              {bn.fields.profession}
+            </label>
+            <input
+              type="text"
+              value={profession}
+              onChange={(e) => setProfession(e.target.value)}
+              className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
+            />
+          </div>
+
+          {/* Education Entries Editor (SPEC-UPDATE-1 3.3) */}
+          <div className="pt-2 border-t border-gray-100">
+            <EducationEditor
+              educations={educations}
+              onChange={setEducations}
+            />
           </div>
 
           {/* Memo / Notes */}

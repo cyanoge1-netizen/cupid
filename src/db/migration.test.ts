@@ -200,7 +200,7 @@ describe('Dexie v2 Migration, Seeds, and Education Summary', () => {
           { id: '2', level: 'এইচএসসি' },
           { id: '3', level: 'এসএসসি', institution: 'সিলেট জিলা স্কুল' },
         ],
-      } as Person;
+      } as unknown as Person;
 
       expect(educationSummary(person)).toBe('MBBS (ঢাকা মেডিকেল), এইচএসসি');
     });
@@ -215,7 +215,7 @@ describe('Dexie v2 Migration, Seeds, and Education Summary', () => {
         docs: [],
         sourceId: null,
         educations: [{ id: '1', level: 'ডিপ্লোমা' }],
-      } as Person;
+      } as unknown as Person;
 
       expect(educationSummary(person)).toBe('ডিপ্লোমা');
     });
@@ -230,7 +230,7 @@ describe('Dexie v2 Migration, Seeds, and Education Summary', () => {
         docs: [],
         sourceId: null,
         education: 'মাস্টার্স (গণিত)',
-      } as Person;
+      } as unknown as Person;
 
       expect(educationSummary(personWithLegacy)).toBe('মাস্টার্স (গণিত)');
     });
@@ -244,7 +244,7 @@ describe('Dexie v2 Migration, Seeds, and Education Summary', () => {
         photos: [],
         docs: [],
         sourceId: null,
-      } as Person;
+      } as unknown as Person;
 
       expect(educationSummary(personEmpty)).toBe('');
     });

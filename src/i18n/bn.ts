@@ -234,4 +234,27 @@ export const bn = {
     speechNotSupported: 'এই ব্রাউজারে ভয়েস সার্চ সমর্থিত নয়।',
     listening: 'শুনছি... বলুন...',
   },
+
+  // Education Section (SPEC-UPDATE-1 3.3)
+  education: {
+    title: 'শিক্ষা তথ্য',
+    addEntry: '+ শিক্ষা যোগ করুন',
+    level: 'শিক্ষার স্তর / ডিগ্রি',
+    levelPlaceholder: 'যেমন: এসএসসি, অনার্স, মাস্টার্স',
+    subject: 'বিভাগ / বিষয়',
+    institution: 'প্রতিষ্ঠান',
+    result: 'ফলাফল (যেমন: GPA 5.00)',
+    year: 'পাসের সন / শিক্ষাবর্ষ',
+    status: 'অবস্থা',
+    statusCompleted: 'সম্পন্ন',
+    statusOngoing: 'অধ্যয়নরত',
+    note: 'নোট',
+    moveUp: 'উপরে সরান',
+    moveDown: 'নিচে সরান',
+    remove: 'মুছুন',
+    deletedNotice: 'শিক্ষা তথ্য মুছে ফেলা হয়েছে।',
+    undo: 'পূর্বাবস্থায় ফেরান',
+    empty: 'কোনো শিক্ষা তথ্য যুক্ত করা হয়নি',
+    requiredLevel: 'শিক্ষার স্তর / ডিগ্রি আবশ্যক',
+  },
 };

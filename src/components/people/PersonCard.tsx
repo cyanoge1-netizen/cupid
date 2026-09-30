@@ -4,6 +4,7 @@ import { PartnerBadge } from '../common/PartnerBadge';
 import { BlobImage } from '../common/BlobImage';
 import { Share2, User } from 'lucide-react';
 import { bn } from '../../i18n/bn';
+import { educationSummary } from '../../utils/summary';
 
 interface PersonCardProps {
   person: Person;
@@ -13,8 +14,10 @@ interface PersonCardProps {
 }
 
 export function PersonCard({ person, partner, onSelect, onShare }: PersonCardProps) {
-  const firstPhoto = person.photos?.[0];
-  const photoBlob = firstPhoto?.thumb || firstPhoto?.blob;
+  const coverPhoto =
+    person.photos?.find((p) => p.id === person.coverPhotoId) || person.photos?.[0];
+  const photoBlob = coverPhoto?.thumb || coverPhoto?.blob;
+  const edu = educationSummary(person);
 
   return (
     <div
@@ -77,9 +80,9 @@ export function PersonCard({ person, partner, onSelect, onShare }: PersonCardPro
             </p>
           ) : null}
 
-          {person.education ? (
+          {edu ? (
             <p className="text-xs text-gray-500 truncate mt-0.5">
-              {person.education}
+              {edu}
             </p>
           ) : null}
         </div>
