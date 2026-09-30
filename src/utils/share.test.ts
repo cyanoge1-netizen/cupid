@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { generateBiodataSummary, educationSummary } from './summary';
-import type { Person, FieldDef } from '../types';
+import 'fake-indexeddb/auto';
+import { generateBiodataSummary, educationSummary, redactSensitiveText } from './summary';
+import { db } from '../db';
+import type { Person, FieldDef, MediaRef, InboxItem } from '../types';
 
 describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)', () => {
   const mockPerson: Person = {
@@ -277,5 +279,155 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
       redactContact: false, // <-- not scrubbing contact
     });
     expect(summary).toContain('01712345678');
+  });
+
+  describe('Privacy & Sensitive Text Redaction (Item 2 & 3)', () => {
+    it('redacts all Bangladeshi mobile phone formats with various separators', () => {
+      const cases = [
+        '01712-345678',
+        '0171 234 5678',
+        '+880 1712 345678',
+        '+88 01712 345678',
+        '০১৭১২-৩৪৫৬৭৮',
+        '01712.345678',
+        '+8801712345678',
+        '+৮৮০১৭১২-৩৪৫৬৭৮',
+        '01712345678',
+      ];
+
+      for (const phoneStr of cases) {
+        const text = `প্রার্থীর মোবাইল: ${phoneStr} জরুরি প্রয়োজনে`;
+        const redacted = redactSensitiveText(text);
+        expect(redacted).not.toContain(phoneStr);
+        expect(redacted).toContain('▇▇▇▇');
+        // Must not contain any remaining 10+ or BD mobile digit run
+        const rawDigits = redacted.replace(/\D/g, '');
+        expect(rawDigits.length).toBeLessThan(10);
+      }
+    });
+
+    it('redacts messaging and social links including t.me and instagram.com', () => {
+      const linkCases = [
+        't.me/matchmaker_bd',
+        'https://t.me/matchmaker_bd',
+        'instagram.com/candidate_profile',
+        'https://instagram.com/candidate_profile',
+        'https://www.instagram.com/candidate_profile/',
+        'wa.me/8801712345678',
+        'facebook.com/person.name',
+        'fb.com/person.name',
+      ];
+
+      for (const link of linkCases) {
+        const text = `যোগাযোগের লিংক: ${link} বিস্তারিত`;
+        const redacted = redactSensitiveText(text);
+        expect(redacted).not.toContain(link);
+        expect(redacted).toContain('▇▇▇▇');
+      }
+    });
+
+    it('negative cases: preserves ages, heights, years, year ranges, and dates without over-redaction', () => {
+      const nonSensitiveCases = [
+        { input: 'বয়স ২৮ বছর', expected: 'বয়স 28 বছর' }, // Bangla numerals normalized, text kept
+        { input: 'উচ্চতা ৫ ফুট ৮ ইঞ্চি', expected: 'উচ্চতা 5 ফুট 8 ইঞ্চি' },
+        { input: "উচ্চতা 5'6\"", expected: "উচ্চতা 5'6\"" },
+        { input: 'জন্মসাল ১৯৯৮', expected: 'জন্মসাল 1998' },
+        { input: 'সেশন 2018-2022', expected: 'সেশন 2018-2022' },
+        { input: 'জন্ম তারিখ 15-08-1998', expected: 'জন্ম তারিখ 15-08-1998' },
+        { input: 'সিজিপিএ ৩.৭৫', expected: 'সিজিপিএ 3.75' },
+      ];
+
+      for (const { input, expected } of nonSensitiveCases) {
+        const redacted = redactSensitiveText(input);
+        expect(redacted).not.toContain('▇▇▇▇');
+        expect(redacted).toBe(expected);
+      }
+    });
+
+    it('redacted mode guarantees no phone-like digit run appears in any field (tags, district, village, etc.)', () => {
+      const personWithLeakedData: Person = {
+        ...mockPerson,
+        district: 'সিলেট (কল 01712-345678)',
+        upazila: 'বিয়ানীবাজার ০১৮১২-৩৪৫৬৭৮',
+        postOffice: 'চারখাই ০১৭১ 234 5678',
+        village: 'চারখাই +880 1712 345678',
+        tags: ['ধার্মিক', '01912-345678', 't.me/leaked'],
+        profession: 'ইঞ্জিনিয়ার +88 01712 345678',
+      };
+
+      const summary = generateBiodataSummary(personWithLeakedData, {
+        redacted: true,
+        includeBasic: true,
+        includeEducation: true,
+        redactContact: true,
+        redactVillage: false, // even if village is unhidden, it must be scrubbed
+      });
+
+      // Assert none of the phone formats leaked through
+      expect(summary).not.toContain('01712-345678');
+      expect(summary).not.toContain('০১৮১২-৩৪৫৬৭৮');
+      expect(summary).not.toContain('0171 234 5678');
+      expect(summary).not.toContain('+880 1712 345678');
+      expect(summary).not.toContain('+88 01712 345678');
+      expect(summary).not.toContain('01912-345678');
+      expect(summary).not.toContain('t.me/leaked');
+
+      // Comprehensive assertion: scan every line in the redacted summary for any 10+ digit run or BD mobile run
+      const lines = summary.split('\n');
+      for (const line of lines) {
+        // Strip out safe year ranges and labels
+        const rawDigits = line.replace(/\D/g, '');
+        // No line in redacted mode should contain a 10+ digit sequence
+        expect(rawDigits.length).toBeLessThan(10);
+        // No BD mobile pattern (013-019 followed by digits)
+        expect(/(?:\+?880?|0)1[3-9]\d{8}/.test(line)).toBe(false);
+      }
+    });
+  });
+
+  describe('Service Worker Share Target Inbox Write (Item 1 & 3)', () => {
+    it('writes InboxItem with MediaRef[] directly to db.inbox and retrieves it', async () => {
+      const testFileId = 'file-sw-test-1';
+      const mockBlob = new Blob(['sample-image-bytes'], { type: 'image/jpeg' });
+      const files: MediaRef[] = [
+        {
+          id: testFileId,
+          kind: 'image',
+          name: 'whatsapp_photo.jpg',
+          mime: 'image/jpeg',
+          blob: mockBlob,
+          createdAt: Date.now(),
+        },
+      ];
+
+      const inboxItemId = 'inbox-item-sw-1';
+      const inboxItem: InboxItem = {
+        id: inboxItemId,
+        files,
+        text: 'পাত্র তানভীর, বিএসসি ইঞ্জিনিয়ার, সিলেট',
+        via: 'share',
+        status: 'new',
+        receivedAt: Date.now(),
+      };
+
+      // Add item directly as SW does
+      await db.inbox.add(inboxItem);
+
+      // Verify it can be retrieved from Dexie
+      const retrieved = await db.inbox.get(inboxItemId);
+      expect(retrieved).toBeDefined();
+      expect(retrieved?.id).toBe(inboxItemId);
+      expect(retrieved?.via).toBe('share');
+      expect(retrieved?.status).toBe('new');
+      expect(retrieved?.text).toContain('পাত্র তানভীর');
+      expect(retrieved?.files).toHaveLength(1);
+      expect(retrieved?.files[0].id).toBe(testFileId);
+      expect(retrieved?.files[0].name).toBe('whatsapp_photo.jpg');
+      expect(retrieved?.files[0].kind).toBe('image');
+      expect(retrieved?.files[0].blob).toBeDefined();
+
+      // Clean up test entry
+      await db.inbox.delete(inboxItemId);
+    });
   });
 });
