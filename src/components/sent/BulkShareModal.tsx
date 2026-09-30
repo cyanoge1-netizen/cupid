@@ -234,7 +234,7 @@ export function BulkShareModal({
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white text-gray-800 border border-gray-300 shadow-2xs"
                   >
                     <span>{p.code}</span>
-                    {p.name && !redacted ? (
+                    {p.name && !prefs.redacted ? (
                       <span className="font-sans text-gray-600 font-normal">({p.name})</span>
                     ) : null}
                     {partner ? (
