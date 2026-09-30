@@ -87,15 +87,13 @@ export function generateBiodataSummary(
   const genderLabel = bn.gender[person.gender];
 
   if (redacted) {
-    lines.push(`বায়োডাটা কোড: ${person.code} (${genderLabel}) [রেডাক্টেড]`);
+    lines.push(`বায়োডাটা (${person.code}) - ${genderLabel}`);
     lines.push('─────────────────────');
 
     if (includeBasic) {
       lines.push(`${bn.fields.code}: ${person.code}`);
-      // Name
-      if (redactName) {
-        lines.push(`${bn.fields.name}: [গোপন]`);
-      } else {
+      // Name & alias — omit entirely if redactName
+      if (!redactName) {
         if (person.name) lines.push(`${bn.fields.name}: ${person.name}`);
         if (person.alias) lines.push(`${bn.fields.alias}: ${person.alias}`);
       }
@@ -103,23 +101,19 @@ export function generateBiodataSummary(
       if (person.height) lines.push(`${bn.fields.height}: ${person.height}`);
       if (person.profession) {
         const prof = redactContact ? redactSensitiveText(person.profession) : person.profession;
-        lines.push(`${bn.fields.profession}: ${prof}`);
+        // Only include if something remains after scrubbing
+        if (prof.trim()) lines.push(`${bn.fields.profession}: ${prof}`);
       }
-      // Parents
-      if (redactParents) {
-        lines.push(`${bn.fields.father}: [গোপন]`);
-        lines.push(`${bn.fields.mother}: [গোপন]`);
-      } else {
+      // Parents — omit entirely if redactParents
+      if (!redactParents) {
         if (person.father) lines.push(`${bn.fields.father}: ${person.father}`);
         if (person.mother) lines.push(`${bn.fields.mother}: ${person.mother}`);
       }
       if (person.district) lines.push(`${bn.fields.district}: ${person.district}`);
       if (person.upazila) lines.push(`${bn.fields.upazila}: ${person.upazila}`);
       if (person.postOffice) lines.push(`${bn.fields.postOffice}: ${person.postOffice}`);
-      // Village
-      if (redactVillage) {
-        lines.push(`${bn.fields.village}: [গোপন]`);
-      } else {
+      // Village — omit entirely if redactVillage
+      if (!redactVillage) {
         if (person.village) lines.push(`${bn.fields.village}: ${person.village}`);
       }
       if (person.tags && person.tags.length > 0) {
@@ -162,13 +156,16 @@ export function generateBiodataSummary(
         const label = def?.label || 'অতিরিক্ত তথ্য';
         let val = item.value.trim();
         if (redacted && redactContact) {
-          if (
+          const isContactField =
             /নম্বর|যোগাযোগ|ফোন|মোবাইল|phone|contact|mobile/i.test(label) ||
-            /নম্বর|যোগাযোগ|ফোন|মোবাইল/i.test(def?.normLabel || '')
-          ) {
-            val = '[গোপন]';
+            /নম্বর|যোগাযোগ|ফোন|মোবাইল/i.test(def?.normLabel || '');
+          if (isContactField) {
+            // Omit contact fields entirely — no placeholder
+            continue;
           } else {
             val = redactSensitiveText(val);
+            // If scrubbing removed everything meaningful, skip the line
+            if (!val.replace(/▇+/g, '').trim()) continue;
           }
         }
         lines.push(`${label}: ${val}`);

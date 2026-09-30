@@ -160,23 +160,19 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
       includeEducation: true,
     });
 
-    // Identifies candidate by code
+    // Identifies candidate by code — header same format as full
     expect(redactedSummary).toContain('B-0312');
     expect(redactedSummary).toContain('কোড: B-0312');
 
-    // Personal identifiers must NOT be in redacted summary
+    // Personal identifiers must NOT appear at all
     expect(redactedSummary).not.toContain('তানভীর আহমেদ');
     expect(redactedSummary).not.toContain('রাতুল');
     expect(redactedSummary).not.toContain('রফিক উদ্দিন');
     expect(redactedSummary).not.toContain('শামীমা বেগম');
-    // village should be redacted (postOffice "চারখাই বাজার" is still shown, but village itself is [গোপন])
     expect(redactedSummary).not.toContain('গ্রাম: চারখাই');
 
-    // Should indicate [গোপন]
-    expect(redactedSummary).toContain('নাম: [গোপন]');
-    expect(redactedSummary).toContain('পিতার নাম: [গোপন]');
-    expect(redactedSummary).toContain('মাতার নাম: [গোপন]');
-    expect(redactedSummary).toContain('গ্রাম: [গোপন]');
+    // No [গোপন] placeholders — complete removal
+    expect(redactedSummary).not.toContain('[গোপন]');
 
     // Safe demographic info remains
     expect(redactedSummary).toContain('28 বছর');
@@ -203,7 +199,8 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     expect(redacted).not.toContain('01712345678');
     expect(redacted).not.toContain('info@example.com');
     expect(redacted).not.toContain('fb.com/profile');
-    expect(redacted).toContain('▇▇▇▇');
+    // ▇▇▇▇ may still appear for inline scrubbing within mixed text
+    expect(redacted).not.toContain('[গোপন]');
   });
 
   it('granular: redactName=false reveals name/alias while keeping parents hidden', () => {
@@ -216,9 +213,11 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     });
     expect(summary).toContain('তানভীর আহমেদ');
     expect(summary).toContain('রাতুল');
-    expect(summary).toContain('পিতার নাম: [গোপন]');
-    expect(summary).toContain('মাতার নাম: [গোপন]');
-    expect(summary).toContain('গ্রাম: [গোপন]');
+    // Parents completely absent — no line, no placeholder
+    expect(summary).not.toContain('রফিক উদ্দিন');
+    expect(summary).not.toContain('শামীমা বেগম');
+    expect(summary).not.toContain('[গোপন]');
+    expect(summary).not.toContain('গ্রাম: চারখাই');
   });
 
   it('granular: redactParents=false reveals parents while keeping name hidden', () => {
@@ -229,13 +228,15 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
       redactVillage: true,
       redactContact: true,
     });
-    expect(summary).toContain('নাম: [গোপন]');
+    // Name line completely absent
+    expect(summary).not.toContain('তানভীর আহমেদ');
+    expect(summary).not.toContain('[গোপন]');
     expect(summary).toContain('রফিক উদ্দিন');
     expect(summary).toContain('শামীমা বেগম');
-    expect(summary).toContain('গ্রাম: [গোপন]');
+    expect(summary).not.toContain('গ্রাম: চারখাই');
   });
 
-  it('granular: redactVillage=false reveals village while other fields still redacted', () => {
+  it('granular: redactVillage=false reveals village while other fields still removed', () => {
     const summary = generateBiodataSummary(mockPerson, {
       redacted: true,
       redactName: true,
@@ -243,8 +244,9 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
       redactVillage: false,
       redactContact: true,
     });
-    expect(summary).toContain('নাম: [গোপন]');
-    expect(summary).toContain('পিতার নাম: [গোপন]');
+    expect(summary).not.toContain('তানভীর আহমেদ');
+    expect(summary).not.toContain('রফিক উদ্দিন');
+    expect(summary).not.toContain('[গোপন]');
     expect(summary).toContain('চারখাই');
   });
 

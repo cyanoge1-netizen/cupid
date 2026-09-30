@@ -15,6 +15,55 @@ import {
   Users,
 } from 'lucide-react';
 
+// Shared prefs key — same as ShareModal so settings stay consistent
+const SHARE_PREFS_KEY = 'ghotkali_share_preferences';
+
+interface SharePreferences {
+  includeBasic: boolean;
+  includeEducation: boolean;
+  selectedCustomFieldIds: string[];
+  redacted: boolean;
+  redactName: boolean;
+  redactParents: boolean;
+  redactVillage: boolean;
+  redactContact: boolean;
+}
+
+function loadSharePrefs(): SharePreferences {
+  try {
+    const raw = localStorage.getItem(SHARE_PREFS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        includeBasic: typeof parsed.includeBasic === 'boolean' ? parsed.includeBasic : true,
+        includeEducation: typeof parsed.includeEducation === 'boolean' ? parsed.includeEducation : true,
+        selectedCustomFieldIds: Array.isArray(parsed.selectedCustomFieldIds) ? parsed.selectedCustomFieldIds : [],
+        redacted: typeof parsed.redacted === 'boolean' ? parsed.redacted : true,
+        redactName: typeof parsed.redactName === 'boolean' ? parsed.redactName : true,
+        redactParents: typeof parsed.redactParents === 'boolean' ? parsed.redactParents : true,
+        redactVillage: typeof parsed.redactVillage === 'boolean' ? parsed.redactVillage : true,
+        redactContact: typeof parsed.redactContact === 'boolean' ? parsed.redactContact : true,
+      };
+    }
+  } catch {}
+  return {
+    includeBasic: true,
+    includeEducation: true,
+    selectedCustomFieldIds: [],
+    redacted: true,
+    redactName: true,
+    redactParents: true,
+    redactVillage: true,
+    redactContact: true,
+  };
+}
+
+function saveSharePrefs(prefs: SharePreferences) {
+  try {
+    localStorage.setItem(SHARE_PREFS_KEY, JSON.stringify(prefs));
+  } catch {}
+}
+
 interface BulkShareModalProps {
   people: Person[];
   partnersMap: Map<string, Partner>;
@@ -31,9 +80,7 @@ export function BulkShareModal({
   onSaveSendLogs,
 }: BulkShareModalProps) {
   const [step, setStep] = useState<'select' | 'log'>('select');
-  const [redacted, setRedacted] = useState(true); // Default redacted every time
-  const [includeBasic, setIncludeBasic] = useState(true);
-  const [includeEducation, setIncludeEducation] = useState(true);
+  const [prefs, setPrefs] = useState<SharePreferences>(loadSharePrefs);
   const [fieldDefsMap, setFieldDefsMap] = useState<Map<string, FieldDef>>(new Map());
 
   const [copied, setCopied] = useState(false);
@@ -50,22 +97,34 @@ export function BulkShareModal({
     });
   }, []);
 
+  const updatePrefs = (updater: (prev: SharePreferences) => SharePreferences) => {
+    setPrefs((prev) => {
+      const updated = updater(prev);
+      saveSharePrefs(updated);
+      return updated;
+    });
+  };
+
   // Combined text summary of all selected clients separated by dividers
   const combinedSummary = useMemo(() => {
     if (people.length === 0) return '';
     return people
       .map((p, idx) => {
         const text = generateBiodataSummary(p, {
-          includeBasic,
-          includeEducation,
+          includeBasic: prefs.includeBasic,
+          includeEducation: prefs.includeEducation,
           fieldDefsMap,
-          redacted,
+          redacted: prefs.redacted,
+          redactName: prefs.redactName,
+          redactParents: prefs.redactParents,
+          redactVillage: prefs.redactVillage,
+          redactContact: prefs.redactContact,
         });
         const divider = idx > 0 ? '\n\n' + '═'.repeat(25) + '\n\n' : '';
         return divider + text;
       })
       .join('');
-  }, [people, includeBasic, includeEducation, fieldDefsMap, redacted]);
+  }, [people, prefs, fieldDefsMap]);
 
   // Extract recent recipients list (unique)
   const recentRecipients = useMemo(() => {
@@ -192,9 +251,9 @@ export function BulkShareModal({
             <div className="bg-gray-100 p-1 rounded-xl flex gap-1 shadow-inner">
               <button
                 type="button"
-                onClick={() => setRedacted(true)}
+                onClick={() => updatePrefs((p) => ({ ...p, redacted: true }))}
                 className={`touch-target flex-1 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition ${
-                  redacted
+                  prefs.redacted
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
@@ -204,9 +263,9 @@ export function BulkShareModal({
               </button>
               <button
                 type="button"
-                onClick={() => setRedacted(false)}
+                onClick={() => updatePrefs((p) => ({ ...p, redacted: false }))}
                 className={`touch-target flex-1 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition ${
-                  !redacted
+                  !prefs.redacted
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
@@ -216,10 +275,43 @@ export function BulkShareModal({
               </button>
             </div>
 
-            {redacted ? (
-              <p className="text-xs text-gray-500 px-1 -mt-2">
-                🔒 {bn.sent.redactedNotice}
-              </p>
+            {/* Granular Redaction Options */}
+            {prefs.redacted ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-amber-600" />
+                  {bn.sent.redactedNotice}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { key: 'redactName', label: bn.sent.redactName },
+                      { key: 'redactParents', label: bn.sent.redactParents },
+                      { key: 'redactVillage', label: bn.sent.redactVillage },
+                      { key: 'redactContact', label: bn.sent.redactContact },
+                    ] as const
+                  ).map(({ key, label }) => (
+                    <label
+                      key={key}
+                      className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition select-none ${
+                        prefs[key]
+                          ? 'bg-amber-100 border-amber-400 text-amber-900 font-semibold'
+                          : 'bg-white border-gray-200 text-gray-500 line-through'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={prefs[key]}
+                        onChange={(e) =>
+                          updatePrefs((p) => ({ ...p, [key]: e.target.checked }))
+                        }
+                        className="w-3.5 h-3.5 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             ) : null}
 
             {/* Partner Notice if applicable */}
@@ -239,8 +331,10 @@ export function BulkShareModal({
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-800">
                   <input
                     type="checkbox"
-                    checked={includeBasic}
-                    onChange={(e) => setIncludeBasic(e.target.checked)}
+                    checked={prefs.includeBasic}
+                    onChange={(e) =>
+                      updatePrefs((p) => ({ ...p, includeBasic: e.target.checked }))
+                    }
                     className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
                   />
                   <span>{bn.sent.sectionBasic}</span>
@@ -248,8 +342,10 @@ export function BulkShareModal({
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-800">
                   <input
                     type="checkbox"
-                    checked={includeEducation}
-                    onChange={(e) => setIncludeEducation(e.target.checked)}
+                    checked={prefs.includeEducation}
+                    onChange={(e) =>
+                      updatePrefs((p) => ({ ...p, includeEducation: e.target.checked }))
+                    }
                     className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
                   />
                   <span>{bn.sent.sectionEducation}</span>
