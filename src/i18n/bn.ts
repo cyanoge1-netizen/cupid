@@ -216,8 +216,14 @@ export const bn = {
     sectionCustomFields: 'কাস্টম তথ্যসমূহ',
     redactedOption: 'রেডাক্টেড (কোড সহ নাম গোপন)',
     fullOption: 'সম্পূর্ণ বায়োডাটা (নাম সহ)',
-    redactedNotice: 'নাম, পিতা-মাতা, গ্রাম ও যোগাযোগের তথ্য গোপন থাকবে। শুধু কোড প্রদর্শিত হবে।',
+    redactedNotice: 'নিচের বিকল্পগুলো দিয়ে কোন তথ্য গোপন রাখবেন তা বেছে নিন:',
     docPrivacyNotice: 'সতর্কতা: মূল ফাইলে প্রার্থীর মোবাইল নম্বর বা পূর্ণ ঠিকানা থাকতে পারে।',
+    redactFieldsTitle: 'কোন তথ্য গোপন রাখবেন?',
+    redactName: 'নাম ও ডাকনাম',
+    redactParents: 'পিতা-মাতার নাম',
+    redactVillage: 'গ্রাম ও বাড়ির ঠিকানা',
+    redactContact: 'মোবাইল নম্বর ও যোগাযোগ',
+    redactAlias: 'ডাকনাম',
   },
 
   // Delete & Trash

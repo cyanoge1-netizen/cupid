@@ -34,6 +34,11 @@ export interface ShareSummaryOptions {
   selectedExtraFieldIds?: string[];
   fieldDefsMap?: Map<string, FieldDef>;
   redacted?: boolean;
+  /** Granular redaction options (only applied when redacted=true) */
+  redactName?: boolean;      // hide name & alias (default true)
+  redactParents?: boolean;   // hide father & mother (default true)
+  redactVillage?: boolean;   // hide village (default true)
+  redactContact?: boolean;   // scrub phone/email/links in all values (default true)
 }
 
 const SENSITIVE_PATTERNS = [
@@ -59,7 +64,7 @@ export function redactSensitiveText(text: string): string {
 /**
  * Generates formatted Bangla biodata text for sharing (SPEC 5.10 & SPEC-UPDATE-1 3.7).
  * - Lists sections: মূল তথ্য, শিক্ষা, then each custom field individually.
- * - In redacted mode: hides name, alias, parents, village, and redacts contact info/links.
+ * - In redacted mode: applies granular field hiding based on redactName/redactParents/redactVillage/redactContact.
  * - Never includes: phoneLast4, memo, source, status.
  */
 export function generateBiodataSummary(
@@ -72,6 +77,10 @@ export function generateBiodataSummary(
     selectedExtraFieldIds = [],
     fieldDefsMap,
     redacted = false,
+    redactName = true,
+    redactParents = true,
+    redactVillage = true,
+    redactContact = true,
   } = options;
 
   const lines: string[] = [];
@@ -83,15 +92,36 @@ export function generateBiodataSummary(
 
     if (includeBasic) {
       lines.push(`${bn.fields.code}: ${person.code}`);
-      lines.push(`${bn.fields.name}: [গোপন]`);
+      // Name
+      if (redactName) {
+        lines.push(`${bn.fields.name}: [গোপন]`);
+      } else {
+        if (person.name) lines.push(`${bn.fields.name}: ${person.name}`);
+        if (person.alias) lines.push(`${bn.fields.alias}: ${person.alias}`);
+      }
       if (person.age) lines.push(`${bn.fields.age}: ${person.age} বছর`);
       if (person.height) lines.push(`${bn.fields.height}: ${person.height}`);
-      if (person.profession) lines.push(`${bn.fields.profession}: ${redactSensitiveText(person.profession)}`);
-      lines.push(`${bn.fields.father}: [গোপন]`);
-      lines.push(`${bn.fields.mother}: [গোপন]`);
+      if (person.profession) {
+        const prof = redactContact ? redactSensitiveText(person.profession) : person.profession;
+        lines.push(`${bn.fields.profession}: ${prof}`);
+      }
+      // Parents
+      if (redactParents) {
+        lines.push(`${bn.fields.father}: [গোপন]`);
+        lines.push(`${bn.fields.mother}: [গোপন]`);
+      } else {
+        if (person.father) lines.push(`${bn.fields.father}: ${person.father}`);
+        if (person.mother) lines.push(`${bn.fields.mother}: ${person.mother}`);
+      }
       if (person.district) lines.push(`${bn.fields.district}: ${person.district}`);
       if (person.upazila) lines.push(`${bn.fields.upazila}: ${person.upazila}`);
-      lines.push(`${bn.fields.village}: [গোপন]`);
+      if (person.postOffice) lines.push(`${bn.fields.postOffice}: ${person.postOffice}`);
+      // Village
+      if (redactVillage) {
+        lines.push(`${bn.fields.village}: [গোপন]`);
+      } else {
+        if (person.village) lines.push(`${bn.fields.village}: ${person.village}`);
+      }
       if (person.tags && person.tags.length > 0) {
         lines.push(`${bn.fields.tags}: ${person.tags.join(', ')}`);
       }
@@ -121,7 +151,7 @@ export function generateBiodataSummary(
   if (includeEducation) {
     const edu = educationSummary(person);
     if (edu) {
-      lines.push(`${bn.fields.education}: ${redacted ? redactSensitiveText(edu) : edu}`);
+      lines.push(`${bn.fields.education}: ${redacted && redactContact ? redactSensitiveText(edu) : edu}`);
     }
   }
 
@@ -131,7 +161,7 @@ export function generateBiodataSummary(
         const def = fieldDefsMap?.get(item.fieldId);
         const label = def?.label || 'অতিরিক্ত তথ্য';
         let val = item.value.trim();
-        if (redacted) {
+        if (redacted && redactContact) {
           if (
             /নম্বর|যোগাযোগ|ফোন|মোবাইল|phone|contact|mobile/i.test(label) ||
             /নম্বর|যোগাযোগ|ফোন|মোবাইল/i.test(def?.normLabel || '')

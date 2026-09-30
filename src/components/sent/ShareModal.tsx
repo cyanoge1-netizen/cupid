@@ -24,6 +24,10 @@ interface SharePreferences {
   includeEducation: boolean;
   selectedCustomFieldIds: string[];
   redacted: boolean;
+  redactName: boolean;
+  redactParents: boolean;
+  redactVillage: boolean;
+  redactContact: boolean;
 }
 
 function loadSharePrefs(): SharePreferences {
@@ -36,6 +40,10 @@ function loadSharePrefs(): SharePreferences {
         includeEducation: typeof parsed.includeEducation === 'boolean' ? parsed.includeEducation : true,
         selectedCustomFieldIds: Array.isArray(parsed.selectedCustomFieldIds) ? parsed.selectedCustomFieldIds : [],
         redacted: typeof parsed.redacted === 'boolean' ? parsed.redacted : true,
+        redactName: typeof parsed.redactName === 'boolean' ? parsed.redactName : true,
+        redactParents: typeof parsed.redactParents === 'boolean' ? parsed.redactParents : true,
+        redactVillage: typeof parsed.redactVillage === 'boolean' ? parsed.redactVillage : true,
+        redactContact: typeof parsed.redactContact === 'boolean' ? parsed.redactContact : true,
       };
     }
   } catch {}
@@ -43,7 +51,11 @@ function loadSharePrefs(): SharePreferences {
     includeBasic: true,
     includeEducation: true,
     selectedCustomFieldIds: [],
-    redacted: true, // Default redacted every time
+    redacted: true,
+    redactName: true,
+    redactParents: true,
+    redactVillage: true,
+    redactContact: true,
   };
 }
 
@@ -113,6 +125,10 @@ export function ShareModal({
         selectedExtraFieldIds: prefs.selectedCustomFieldIds,
         fieldDefsMap,
         redacted: prefs.redacted,
+        redactName: prefs.redactName,
+        redactParents: prefs.redactParents,
+        redactVillage: prefs.redactVillage,
+        redactContact: prefs.redactContact,
       }),
     [person, prefs, fieldDefsMap]
   );
@@ -300,10 +316,44 @@ export function ShareModal({
                 <span>{bn.sent.fullOption}</span>
               </button>
             </div>
+
+            {/* Granular Redaction Options (shown when redacted mode is ON) */}
             {prefs.redacted ? (
-              <p className="text-xs text-gray-500 px-1 -mt-2">
-                🔒 {bn.sent.redactedNotice}
-              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-amber-600" />
+                  {bn.sent.redactedNotice}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { key: 'redactName', label: bn.sent.redactName },
+                      { key: 'redactParents', label: bn.sent.redactParents },
+                      { key: 'redactVillage', label: bn.sent.redactVillage },
+                      { key: 'redactContact', label: bn.sent.redactContact },
+                    ] as const
+                  ).map(({ key, label }) => (
+                    <label
+                      key={key}
+                      className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition select-none ${
+                        prefs[key]
+                          ? 'bg-amber-100 border-amber-400 text-amber-900 font-semibold'
+                          : 'bg-white border-gray-200 text-gray-500 line-through'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={prefs[key]}
+                        onChange={(e) =>
+                          updatePrefs((p) => ({ ...p, [key]: e.target.checked }))
+                        }
+                        className="w-3.5 h-3.5 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             ) : null}
 
             {/* Text Summary Checkbox & Copy Button */}

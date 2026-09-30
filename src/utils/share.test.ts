@@ -169,7 +169,8 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     expect(redactedSummary).not.toContain('রাতুল');
     expect(redactedSummary).not.toContain('রফিক উদ্দিন');
     expect(redactedSummary).not.toContain('শামীমা বেগম');
-    expect(redactedSummary).not.toContain('চারখাই');
+    // village should be redacted (postOffice "চারখাই বাজার" is still shown, but village itself is [গোপন])
+    expect(redactedSummary).not.toContain('গ্রাম: চারখাই');
 
     // Should indicate [গোপন]
     expect(redactedSummary).toContain('নাম: [গোপন]');
@@ -203,5 +204,62 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     expect(redacted).not.toContain('info@example.com');
     expect(redacted).not.toContain('fb.com/profile');
     expect(redacted).toContain('▇▇▇▇');
+  });
+
+  it('granular: redactName=false reveals name/alias while keeping parents hidden', () => {
+    const summary = generateBiodataSummary(mockPerson, {
+      redacted: true,
+      redactName: false,
+      redactParents: true,
+      redactVillage: true,
+      redactContact: true,
+    });
+    expect(summary).toContain('তানভীর আহমেদ');
+    expect(summary).toContain('রাতুল');
+    expect(summary).toContain('পিতার নাম: [গোপন]');
+    expect(summary).toContain('মাতার নাম: [গোপন]');
+    expect(summary).toContain('গ্রাম: [গোপন]');
+  });
+
+  it('granular: redactParents=false reveals parents while keeping name hidden', () => {
+    const summary = generateBiodataSummary(mockPerson, {
+      redacted: true,
+      redactName: true,
+      redactParents: false,
+      redactVillage: true,
+      redactContact: true,
+    });
+    expect(summary).toContain('নাম: [গোপন]');
+    expect(summary).toContain('রফিক উদ্দিন');
+    expect(summary).toContain('শামীমা বেগম');
+    expect(summary).toContain('গ্রাম: [গোপন]');
+  });
+
+  it('granular: redactVillage=false reveals village while other fields still redacted', () => {
+    const summary = generateBiodataSummary(mockPerson, {
+      redacted: true,
+      redactName: true,
+      redactParents: true,
+      redactVillage: false,
+      redactContact: true,
+    });
+    expect(summary).toContain('নাম: [গোপন]');
+    expect(summary).toContain('পিতার নাম: [গোপন]');
+    expect(summary).toContain('চারখাই');
+  });
+
+  it('granular: redactContact=false allows phone-like content to pass through in profession', () => {
+    const personWithPhone: Person = {
+      ...mockPerson,
+      profession: 'যোগাযোগ 01712345678',
+    };
+    const summary = generateBiodataSummary(personWithPhone, {
+      redacted: true,
+      redactName: true,
+      redactParents: true,
+      redactVillage: true,
+      redactContact: false, // <-- not scrubbing contact
+    });
+    expect(summary).toContain('01712345678');
   });
 });
