@@ -132,4 +132,4 @@ Run the full automated test suite covering code generation, normalization, fuzzy
 ```bash
 npm test
 ```
-All 95 unit tests pass with zero warnings and errors.
+All 111 unit tests pass with zero warnings and errors.

@@ -240,13 +240,13 @@ export async function restoreBackupZip(
         await customDb.partners.clear();
         await customDb.inbox.clear();
         await customDb.sendLogs.clear();
+        await customDb.fieldDefs.clear();
+        await customDb.suggestions.clear();
 
         if (manifest.tables.fieldDefs && manifest.tables.fieldDefs.length > 0) {
-          await customDb.fieldDefs.clear();
           await customDb.fieldDefs.bulkAdd(manifest.tables.fieldDefs);
         }
         if (manifest.tables.suggestions && manifest.tables.suggestions.length > 0) {
-          await customDb.suggestions.clear();
           await customDb.suggestions.bulkAdd(manifest.tables.suggestions);
         }
 

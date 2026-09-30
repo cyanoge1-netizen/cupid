@@ -348,4 +348,37 @@ describe('Backup and Restore (SPEC 5.11 & SPEC-UPDATE-1 3.8 & 4)', () => {
     expect(allSugs).toHaveLength(1);
     expect(allSugs[0].useCount).toBe(6);
   });
+
+  it('replace mode completely clears existing fieldDefs and suggestions', async () => {
+    // db2 has existing fieldDef and suggestion
+    await db2.fieldDefs.put({
+      id: 'old-fd',
+      label: 'পুরাতন তথ্য',
+      normLabel: norm('পুরাতন তথ্য'),
+      section: 'other',
+      kind: 'text',
+      useCount: 1,
+      lastUsedAt: 1000,
+    });
+    await db2.suggestions.put({
+      id: 'old-sug',
+      list: 'eduLevel',
+      text: 'পুরাতন ডিগ্রি',
+      useCount: 1,
+      lastUsedAt: 1000,
+    });
+
+    // db1 is an empty database (no custom fields or suggestions)
+    const { zipBlob } = await exportBackupZip(db1);
+
+    // Restore with mode === 'replace'
+    await restoreBackupZip(zipBlob, 'replace', db2);
+
+    // db2 fieldDefs and suggestions must be completely cleared
+    const remainingDefs = await db2.fieldDefs.toArray();
+    expect(remainingDefs).toHaveLength(0);
+
+    const remainingSugs = await db2.suggestions.toArray();
+    expect(remainingSugs).toHaveLength(0);
+  });
 });

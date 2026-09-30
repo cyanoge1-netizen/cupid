@@ -253,6 +253,7 @@ export const bn = {
     confirmPin: 'পিন পুনরায় নিশ্চিত করুন',
     pinMismatch: 'পিন দুটি মেলেনি!',
     pinIncorrect: 'ভুল পিন!',
+    pinLockout: '৫ বার ভুল পিন দেওয়া হয়েছে। {seconds} সেকেন্ড অপেক্ষা করুন।',
     appLocked: 'অ্যাপ লক করা আছে',
     unlockBtn: 'প্রবেশ করুন',
   },

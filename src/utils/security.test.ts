@@ -26,4 +26,13 @@ describe('Security and PIN Hashing (SPEC 5.12)', () => {
     expect(await verifyPin('4321', h1)).toBe(true);
     expect(await verifyPin('4321', h2)).toBe(true);
   });
+
+  it('performs constant-time hash comparison correctly with timingSafeEqual', async () => {
+    const { timingSafeEqual } = await import('./security');
+    expect(timingSafeEqual('abcdef0123456789', 'abcdef0123456789')).toBe(true);
+    expect(timingSafeEqual('abcdef0123456789', 'abcdef0123456780')).toBe(false);
+    expect(timingSafeEqual('abcdef', 'abcdef01')).toBe(false);
+    expect(timingSafeEqual('', '')).toBe(true);
+    expect(timingSafeEqual('a', '')).toBe(false);
+  });
 });

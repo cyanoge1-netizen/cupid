@@ -62,9 +62,23 @@ export async function hashPin(pin: string, existingSaltHex?: string): Promise<Pi
 }
 
 /**
- * Verifies a 4-digit PIN against stored salted hash.
+ * Constant-time comparison between two hex strings to prevent timing attacks.
+ */
+export function timingSafeEqual(a: string, b: string): boolean {
+  const aLen = a.length;
+  const bLen = b.length;
+  let diff = aLen ^ bLen;
+  for (let i = 0; i < aLen; i++) {
+    const bChar = i < bLen ? b.charCodeAt(i) : 0;
+    diff |= a.charCodeAt(i) ^ bChar;
+  }
+  return diff === 0;
+}
+
+/**
+ * Verifies a 4-digit PIN against stored salted hash using constant-time comparison.
  */
 export async function verifyPin(pin: string, stored: PinHashData): Promise<boolean> {
   const { hash } = await hashPin(pin, stored.salt);
-  return hash === stored.hash;
+  return timingSafeEqual(hash, stored.hash);
 }
