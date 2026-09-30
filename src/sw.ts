@@ -102,13 +102,17 @@ function getKind(mime: string): 'image' | 'pdf' | 'doc' | 'audio' | 'text' {
 }
 
 /**
- * Intercept POST to /share path as specified in SPEC section 7.
+ * Intercept POST to share path matched via new URL('share', self.registration.scope).
  */
 self.addEventListener('fetch', (event: FetchEvent) => {
   const url = new URL(event.request.url);
+  const shareUrl = new URL('share', self.registration.scope);
 
-  // Check if this request is the share_target POST
-  if (event.request.method === 'POST' && (url.pathname.endsWith('/share') || url.pathname.endsWith('share'))) {
+  // Match the share path via new URL('share', self.registration.scope)
+  if (
+    event.request.method === 'POST' &&
+    (url.pathname === shareUrl.pathname || url.pathname === `${shareUrl.pathname}/`)
+  ) {
     event.respondWith(
       (async () => {
         try {
