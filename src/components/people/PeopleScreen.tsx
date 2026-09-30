@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Person, Partner, Status, Gender } from '../../types';
 import { bn } from '../../i18n/bn';
 import { PersonCard } from './PersonCard';
-import { searchPeople } from '../../utils/search';
+import { searchPeople, type SortOption } from '../../utils/search';
 import { Search, Mic, MicOff, X, Filter, CheckSquare, Share2 } from 'lucide-react';
 
 interface PeopleScreenProps {
@@ -34,6 +34,8 @@ export function PeopleScreen({
     initialSourceFilter !== undefined ? initialSourceFilter : 'all'
   );
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [selectedSortBy, setSelectedSortBy] = useState<SortOption>('updatedAt');
   const [isListening, setIsListening] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -101,6 +103,18 @@ export function PeopleScreen({
     return Array.from(set).sort();
   }, [people]);
 
+  // Extract all unique tags from people list for filter
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of people) {
+      if (p.deletedAt) continue;
+      for (const t of p.tags || []) {
+        if (t.trim()) set.add(t.trim());
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'bn'));
+  }, [people]);
+
   // Execute in-memory search with active filters
   const searchResults = useMemo(() => {
     return searchPeople(
@@ -111,10 +125,12 @@ export function PeopleScreen({
         gender: selectedGender,
         sourceId: selectedSource,
         district: selectedDistrict,
+        tag: selectedTag,
+        sortBy: selectedSortBy,
       },
       partnersMap
     );
-  }, [debouncedQuery, people, selectedStatus, selectedGender, selectedSource, selectedDistrict, partnersMap]);
+  }, [debouncedQuery, people, selectedStatus, selectedGender, selectedSource, selectedDistrict, selectedTag, selectedSortBy, partnersMap]);
 
   const hasNearMatch = searchResults.some((r) => r.isNearMatch);
 
@@ -213,7 +229,7 @@ export function PeopleScreen({
             type="button"
             onClick={() => setShowFilters(!showFilters)}
             className={`touch-target p-2 rounded-full transition ${
-              showFilters || selectedGender !== 'all' || selectedSource !== 'all' || selectedDistrict !== 'all'
+              showFilters || selectedGender !== 'all' || selectedSource !== 'all' || selectedDistrict !== 'all' || selectedTag !== 'all' || selectedSortBy !== 'updatedAt'
                 ? 'text-emerald-600 bg-emerald-50'
                 : 'text-gray-500 hover:bg-gray-100'
             }`}
@@ -351,6 +367,73 @@ export function PeopleScreen({
               </div>
             </div>
           ) : null}
+
+          {/* Tag Filter */}
+          {allTags.length > 0 ? (
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">
+                {bn.people.filterByTag}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTag('all')}
+                  className={`touch-target px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                    selectedTag === 'all'
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {bn.people.allTags}
+                </button>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setSelectedTag(tag)}
+                    className={`touch-target px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                      selectedTag === tag
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Sort By */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">
+              {bn.people.sortBy}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { key: 'updatedAt' as SortOption, label: bn.people.sortByUpdated },
+                  { key: 'ageAsc' as SortOption, label: bn.people.sortByAgeAsc },
+                  { key: 'ageDesc' as SortOption, label: bn.people.sortByAgeDesc },
+                  { key: 'name' as SortOption, label: bn.people.sortByName },
+                  { key: 'tag' as SortOption, label: bn.people.sortByTag },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedSortBy(key)}
+                  className={`touch-target px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                    selectedSortBy === key
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
 

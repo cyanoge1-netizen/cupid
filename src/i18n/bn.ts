@@ -109,6 +109,15 @@ export const bn = {
     deselectAll: 'সব বাতিল',
     bulkShare: 'একত্রে শেয়ার করুন',
     bulkShareTitle: 'একত্রে বায়োডাটা শেয়ার',
+    sortBy: 'সাজানোর ক্রম',
+    sortByUpdated: 'সর্বশেষ আপডেট',
+    sortByTag: 'ট্যাগ অনুযায়ী',
+    sortByAgeAsc: 'বয়স (কম থেকে বেশি)',
+    sortByAgeDesc: 'বয়স (বেশি থেকে কম)',
+    sortByName: 'নাম অনুযায়ী',
+    filterByTag: 'ট্যাগ ফিল্টার',
+    allTags: 'সকল ট্যাগ',
+    tagsTitle: 'ট্যাগসমূহ',
   },
 
   // Person Detail & Form Fields

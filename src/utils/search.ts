@@ -1,11 +1,15 @@
 import type { Person, Partner, Gender, Status } from '../types';
 import { norm, editDistance } from './normalizer';
 
+export type SortOption = 'updatedAt' | 'tag' | 'ageAsc' | 'ageDesc' | 'name';
+
 export interface SearchFilters {
   status?: Status | 'all';
   gender?: Gender | 'all';
   sourceId?: string | null | 'all'; // 'all', null (own), or partner.id
   district?: string | 'all';
+  tag?: string | 'all';
+  sortBy?: SortOption;
 }
 
 export interface SearchResult {
@@ -126,13 +130,65 @@ export function searchPeople(
       if (!p.district || norm(p.district) !== norm(filters.district)) return false;
     }
 
+    // Filter by tag
+    if (filters.tag && filters.tag !== 'all') {
+      const targetTag = norm(filters.tag);
+      const hasTag = p.tags?.some((t) => norm(t) === targetTag || norm(t).includes(targetTag));
+      if (!hasTag) return false;
+    }
+
     return true;
   });
+
+  const sortBy = filters.sortBy || 'updatedAt';
+
+  function compareSearchResults(a: SearchResult, b: SearchResult): number {
+    if (a.score !== b.score) {
+      return b.score - a.score;
+    }
+
+    if (sortBy === 'tag') {
+      const aTags = a.person.tags || [];
+      const bTags = b.person.tags || [];
+      const aHas = aTags.length > 0;
+      const bHas = bTags.length > 0;
+
+      if (aHas && !bHas) return -1;
+      if (!aHas && bHas) return 1;
+      if (aHas && bHas) {
+        const tagDiff = aTags.join(', ').localeCompare(bTags.join(', '), 'bn');
+        if (tagDiff !== 0) return tagDiff;
+      }
+      return b.person.updatedAt - a.person.updatedAt;
+    }
+
+    if (sortBy === 'ageAsc') {
+      const aAge = a.person.age ?? 999;
+      const bAge = b.person.age ?? 999;
+      if (aAge !== bAge) return aAge - bAge;
+      return b.person.updatedAt - a.person.updatedAt;
+    }
+
+    if (sortBy === 'ageDesc') {
+      const aAge = a.person.age ?? -1;
+      const bAge = b.person.age ?? -1;
+      if (aAge !== bAge) return bAge - aAge;
+      return b.person.updatedAt - a.person.updatedAt;
+    }
+
+    if (sortBy === 'name') {
+      const nameDiff = (a.person.name || '').localeCompare(b.person.name || '', 'bn');
+      if (nameDiff !== 0) return nameDiff;
+      return b.person.updatedAt - a.person.updatedAt;
+    }
+
+    return b.person.updatedAt - a.person.updatedAt;
+  }
 
   const rawQuery = query.trim();
   const normalizedQuery = norm(rawQuery);
 
-  // If query is empty, return filtered list ranked by status & updatedAt
+  // If query is empty, return filtered list ranked by status & chosen sort order
   if (!normalizedQuery) {
     return filtered
       .map((person) => {
@@ -140,10 +196,7 @@ export function searchPeople(
         if (person.status === 'married') score -= 1;
         return { person, score };
       })
-      .sort((a, b) => {
-        if (a.score !== b.score) return b.score - a.score;
-        return b.person.updatedAt - a.person.updatedAt;
-      });
+      .sort(compareSearchResults);
   }
 
   const tokens = normalizedQuery.split(' ').filter(Boolean);
@@ -199,11 +252,7 @@ export function searchPeople(
       }
     }
 
-    results.sort((a, b) => {
-      if (a.score !== b.score) return b.score - a.score;
-      return b.person.updatedAt - a.person.updatedAt;
-    });
-
+    results.sort(compareSearchResults);
     return results;
   }
 

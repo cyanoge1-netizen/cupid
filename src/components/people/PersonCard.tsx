@@ -142,6 +142,24 @@ export function PersonCard({
               {edu}
             </p>
           ) : null}
+
+          {person.tags && person.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {person.tags.slice(0, 3).map((tag, i) => (
+                <span
+                  key={i}
+                  className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full border border-emerald-200 font-medium"
+                >
+                  #{tag}
+                </span>
+              ))}
+              {person.tags.length > 3 ? (
+                <span className="text-[10px] text-gray-400 px-1 py-0.5">
+                  +{person.tags.length - 3}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
