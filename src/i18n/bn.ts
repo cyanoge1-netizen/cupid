@@ -219,6 +219,7 @@ export const bn = {
     redactedNotice: 'নিচের বিকল্পগুলো দিয়ে কোন তথ্য গোপন রাখবেন তা বেছে নিন:',
     docPrivacyNotice: 'সতর্কতা: মূল ফাইলে প্রার্থীর মোবাইল নম্বর বা পূর্ণ ঠিকানা থাকতে পারে।',
     redactFieldsTitle: 'কোন তথ্য গোপন রাখবেন?',
+    redactCode: 'বায়োডাটা কোড',
     redactName: 'নাম ও ডাকনাম',
     redactParents: 'পিতা-মাতার নাম',
     redactVillage: 'গ্রাম ও বাড়ির ঠিকানা',

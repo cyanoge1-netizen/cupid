@@ -24,6 +24,7 @@ interface SharePreferences {
   includeEducation: boolean;
   selectedCustomFieldIds: string[];
   redacted: boolean;
+  redactCode: boolean;
   redactName: boolean;
   redactParents: boolean;
   redactVillage: boolean;
@@ -40,6 +41,7 @@ function loadSharePrefs(): SharePreferences {
         includeEducation: typeof parsed.includeEducation === 'boolean' ? parsed.includeEducation : true,
         selectedCustomFieldIds: Array.isArray(parsed.selectedCustomFieldIds) ? parsed.selectedCustomFieldIds : [],
         redacted: typeof parsed.redacted === 'boolean' ? parsed.redacted : true,
+        redactCode: typeof parsed.redactCode === 'boolean' ? parsed.redactCode : true,
         redactName: typeof parsed.redactName === 'boolean' ? parsed.redactName : true,
         redactParents: typeof parsed.redactParents === 'boolean' ? parsed.redactParents : true,
         redactVillage: typeof parsed.redactVillage === 'boolean' ? parsed.redactVillage : true,
@@ -52,6 +54,7 @@ function loadSharePrefs(): SharePreferences {
     includeEducation: true,
     selectedCustomFieldIds: [],
     redacted: true,
+    redactCode: true,
     redactName: true,
     redactParents: true,
     redactVillage: true,
@@ -125,6 +128,7 @@ export function ShareModal({
         selectedExtraFieldIds: prefs.selectedCustomFieldIds,
         fieldDefsMap,
         redacted: prefs.redacted,
+        redactCode: prefs.redactCode,
         redactName: prefs.redactName,
         redactParents: prefs.redactParents,
         redactVillage: prefs.redactVillage,
@@ -327,6 +331,7 @@ export function ShareModal({
                 <div className="grid grid-cols-2 gap-2">
                   {(
                     [
+                      { key: 'redactCode', label: bn.sent.redactCode },
                       { key: 'redactName', label: bn.sent.redactName },
                       { key: 'redactParents', label: bn.sent.redactParents },
                       { key: 'redactVillage', label: bn.sent.redactVillage },

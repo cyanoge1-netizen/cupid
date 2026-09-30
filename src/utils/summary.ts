@@ -35,6 +35,7 @@ export interface ShareSummaryOptions {
   fieldDefsMap?: Map<string, FieldDef>;
   redacted?: boolean;
   /** Granular redaction options (only applied when redacted=true) */
+  redactCode?: boolean;      // hide code (default false for code, or true if user wants it hidden)
   redactName?: boolean;      // hide name & alias (default true)
   redactParents?: boolean;   // hide father & mother (default true)
   redactVillage?: boolean;   // hide village (default true)
@@ -77,6 +78,7 @@ export function generateBiodataSummary(
     selectedExtraFieldIds = [],
     fieldDefsMap,
     redacted = false,
+    redactCode = true,
     redactName = true,
     redactParents = true,
     redactVillage = true,
@@ -87,11 +89,17 @@ export function generateBiodataSummary(
   const genderLabel = bn.gender[person.gender];
 
   if (redacted) {
-    lines.push(`বায়োডাটা (${person.code}) - ${genderLabel}`);
+    if (!redactCode) {
+      lines.push(`বায়োডাটা (${person.code}) - ${genderLabel}`);
+    } else {
+      lines.push(`বায়োডাটা - ${genderLabel}`);
+    }
     lines.push('─────────────────────');
 
     if (includeBasic) {
-      lines.push(`${bn.fields.code}: ${person.code}`);
+      if (!redactCode) {
+        lines.push(`${bn.fields.code}: ${person.code}`);
+      }
       // Name & alias — omit entirely if redactName
       if (!redactName) {
         if (person.name) lines.push(`${bn.fields.name}: ${person.name}`);

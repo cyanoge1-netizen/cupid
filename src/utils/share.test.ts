@@ -153,16 +153,16 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     );
   });
 
-  it('redacted mode hides name, alias, parents, village and keeps code and general fields', () => {
+  it('redacted mode hides code, name, alias, parents, village and keeps general demographic fields', () => {
     const redactedSummary = generateBiodataSummary(mockPerson, {
       redacted: true,
       includeBasic: true,
       includeEducation: true,
     });
 
-    // Identifies candidate by code — header same format as full
-    expect(redactedSummary).toContain('B-0312');
-    expect(redactedSummary).toContain('কোড: B-0312');
+    // Code is omitted by default in redacted mode
+    expect(redactedSummary).not.toContain('B-0312');
+    expect(redactedSummary).not.toContain('কোড: B-0312');
 
     // Personal identifiers must NOT appear at all
     expect(redactedSummary).not.toContain('তানভীর আহমেদ');
@@ -179,6 +179,20 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
     expect(redactedSummary).toContain('সফটওয়্যার ইঞ্জিনিয়ার');
     expect(redactedSummary).toContain('সিলেট');
     expect(redactedSummary).toContain('বিয়ানীবাজার');
+  });
+
+  it('granular: redactCode=false keeps code while keeping name and other fields hidden', () => {
+    const summary = generateBiodataSummary(mockPerson, {
+      redacted: true,
+      redactCode: false,
+      redactName: true,
+      redactParents: true,
+      redactVillage: true,
+      redactContact: true,
+    });
+    expect(summary).toContain('B-0312');
+    expect(summary).toContain('কোড: B-0312');
+    expect(summary).not.toContain('তানভীর আহমেদ');
   });
 
   it('redacted mode scrubs embedded contact numbers, emails, and links', () => {
