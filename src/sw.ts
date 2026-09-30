@@ -161,11 +161,13 @@ self.addEventListener('fetch', (event: FetchEvent) => {
           });
 
           // Respond with 303 redirect to inbox tab with shared query param
-          // Note: using relative redirect so base path is preserved
-          return Response.redirect('./?tab=inbox&shared=1', 303);
+          // Note: using resolved URL relative to the request so base path is preserved
+          const redirectUrl = new URL('./?tab=inbox&shared=1', event.request.url).href;
+          return Response.redirect(redirectUrl, 303);
         } catch (err) {
           // Fallback redirect on error
-          return Response.redirect('./?tab=inbox&error=share_failed', 303);
+          const fallbackUrl = new URL('./?tab=inbox&error=share_failed', event.request.url).href;
+          return Response.redirect(fallbackUrl, 303);
         }
       })()
     );

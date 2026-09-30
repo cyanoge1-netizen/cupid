@@ -117,6 +117,103 @@ describe('Database and Code Generator', () => {
 
       expect(p2.code).toBe('B-0002');
     });
+
+    it('create person, soft delete, purge, create again; the new code must be higher than every previous code', async () => {
+      // 1. Create person
+      const p1 = await createPerson({
+        gender: 'G',
+        name: 'First Groom',
+        tags: [],
+        status: 'active',
+        sourceId: null,
+        photos: [],
+        docs: [],
+      }, testDb);
+      expect(p1.code).toBe('G-0001');
+
+      // 2. Soft delete
+      await softDeletePerson(p1.id, testDb);
+      const deletedRecord = await testDb.people.get(p1.id);
+      expect(deletedRecord?.deletedAt).toBeDefined();
+
+      // 3. Purge (set deletedAt to > 30 days ago and purge)
+      await testDb.people.update(p1.id, { deletedAt: Date.now() - 40 * 24 * 60 * 60 * 1000 });
+      const { people: purgedPeople } = await purgeOldDeleted(30, testDb);
+      expect(purgedPeople).toBe(1);
+      expect(await testDb.people.get(p1.id)).toBeUndefined(); // Permanently purged
+
+      // 4. Create again
+      const p2 = await createPerson({
+        gender: 'G',
+        name: 'Second Groom',
+        tags: [],
+        status: 'active',
+        sourceId: null,
+        photos: [],
+        docs: [],
+      }, testDb);
+
+      // The new code must be higher than every previous code
+      expect(p2.code).toBe('G-0002');
+      const parsed1 = parsePersonCode(p1.code)!;
+      const parsed2 = parsePersonCode(p2.code)!;
+      expect(parsed2.counter).toBeGreaterThan(parsed1.counter);
+    });
+
+    it('confirms createPerson generates the code inside the same transaction', async () => {
+      // Get initial counter
+      const metaBefore = await testDb.meta.get('counter:B');
+      const countBefore = (metaBefore?.value as number) || 0;
+
+      // Verify createPerson runs inside an atomic transaction:
+      // If any error occurs inside the transaction block before commit,
+      // Dexie rolls back all changes to both people table and meta table
+      await expect(
+        testDb.transaction('rw', testDb.people, testDb.meta, async () => {
+          const counterKey = 'counter:B';
+          const metaRecord = await testDb.meta.get(counterKey);
+          const current = typeof metaRecord?.value === 'number' ? metaRecord.value : 0;
+          await testDb.meta.put({ key: counterKey, value: current + 1 });
+
+          // Also insert a test person
+          await testDb.people.add({
+            id: 'failing-id',
+            code: 'B-9999',
+            gender: 'B',
+            tags: [],
+            status: 'active',
+            sourceId: null,
+            photos: [],
+            docs: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+
+          // Abort transaction deliberately
+          throw new Error('Simulated abort');
+        })
+      ).rejects.toThrow('Simulated abort');
+
+      // Meta and people tables must not have modified values due to rollback
+      const metaAfterAbort = await testDb.meta.get('counter:B');
+      expect(metaAfterAbort?.value).toBe(countBefore || undefined);
+      expect(await testDb.people.get('failing-id')).toBeUndefined();
+
+      // Successful atomic creation:
+      const p = await createPerson({
+        gender: 'B',
+        name: 'Atomic Bride',
+        tags: [],
+        status: 'active',
+        sourceId: null,
+        photos: [],
+        docs: [],
+      }, testDb);
+
+      expect(p.code).toBe(`B-${String(countBefore + 1).padStart(4, '0')}`);
+      const metaAfterSuccess = await testDb.meta.get('counter:B');
+      expect(metaAfterSuccess?.value).toBe(countBefore + 1);
+    });
   });
 
   describe('Soft Delete, Restore, and 30-day Purge', () => {

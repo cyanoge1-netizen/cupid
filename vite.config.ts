@@ -3,9 +3,15 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Set Vite base from env var for GitHub Pages (SPEC 3 & 12)
+const base = process.env.BASE_URL || process.env.VITE_BASE || './';
+const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+const manifestScope = base === './' ? './' : normalizedBase;
+const shareAction = base === './' ? './share' : `${normalizedBase}share`;
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './',
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -24,6 +30,8 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         lang: 'bn',
+        scope: manifestScope,
+        start_url: manifestScope,
         icons: [
           {
             src: 'icon.svg',
@@ -33,7 +41,7 @@ export default defineConfig({
           }
         ],
         share_target: {
-          action: 'share',
+          action: shareAction,
           method: 'POST',
           enctype: 'multipart/form-data',
           params: {
