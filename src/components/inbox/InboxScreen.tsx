@@ -3,7 +3,6 @@ import type { InboxItem, Partner } from '../../types';
 import { bn } from '../../i18n/bn';
 import { BlobImage } from '../common/BlobImage';
 import { PasteTextModal } from './PasteTextModal';
-import { createThumbnail, getMediaKind } from '../../utils/media';
 import {
   Image as ImageIcon,
   FileText,

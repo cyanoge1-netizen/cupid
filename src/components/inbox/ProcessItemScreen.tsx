@@ -82,7 +82,6 @@ export function ProcessItemScreen({
   // Duplicate detection
   const duplicateMatches = useMemo(() => {
     if (ignoreDuplicates) return [];
-    const parsedAge = age.trim() ? parseInt(age.trim(), 10) : undefined;
     return checkDuplicates(
       {
         name: name.trim() || undefined,
@@ -94,7 +93,7 @@ export function ProcessItemScreen({
       people,
       partnersMap
     );
-  }, [name, father, district, village, phoneLast4, people, partnersMap, ignoreDuplicates, age]);
+  }, [name, father, district, village, phoneLast4, people, partnersMap, ignoreDuplicates]);
 
   const imageFiles = useMemo(
     () => item.files.filter((f) => f.kind === 'image'),
