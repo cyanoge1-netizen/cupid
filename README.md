@@ -4,18 +4,23 @@ A local companion Progressive Web App (PWA) for matchmakers to store, organize, 
 
 ---
 
-## 🚀 Features (Phase 1 MVP)
+## 🚀 Features (Phase 1 MVP & SPEC-UPDATE-1)
 
-- **📱 Offline-First & No Backend**: All personal records and photos stay in the phone's IndexedDB (via Dexie).
+- **📱 Offline-First & No Backend**: All personal records, photos, and documents stay in the phone's IndexedDB (via Dexie v2).
 - **📥 Web Share Target Intake**: Share photos and biodata text directly from WhatsApp to the installed PWA.
 - **🏷️ Deterministic Bangla Text Parser**: Automatically detects and pre-fills name, father, mother, district, upazila, village, age, height, education, profession, and phone from pasted text without AI calls.
-- **🔍 Generous Bangla Fuzzy Search**: Full-text in-memory search with typo tolerance (edit distance $\le 1$), token fallback, and Bangla numeral normalization (`০-৯` $\leftrightarrow$ `0-9`).
+- **📑 Parser Leftovers & Inbox Checklist**: Automatically catches unrecognized `label: value` pairs into an "আরও তথ্য পাওয়া গেছে" checklist, pre-checking catalog matches and converting them to custom fields on save. Includes "আলাদা করুন" to split multi-degree education lines.
+- **🎓 Structured Education History**: Add multiple degrees (এসএসসি, এইচএসসি, ডিপ্লোমা, অনার্স, মাস্টার্স, এমবিবিএস, etc.) with institution, passing year, result, ongoing/completed status, and 10-second delete undo.
+- **🗂️ Extensible Custom Fields Catalog**: Organize profile details into collapsible sections (পারিবারিক তথ্য, ব্যক্তিগত, পেশা, চাহিদা, অন্যান্য). Adding custom fields creates reusable definitions with instant chip suggestions. Manage catalog in Settings (rename, hide/unhide, safe delete).
+- **🖼️ Multi-Photo Gallery & Cover Photo**: Store multiple photos per person, assign a cover photo (with gold star badge), reorder photos, preview in full-screen swipeable lightbox, and 10-second delete undo.
+- **📄 Document Attachments**: Attach PDFs and scanned biodata documents with custom labels, view via secure object URLs, with file size alerts (>15MB per file, >50MB per person) and 10-second delete undo.
+- **🔍 Generous Bangla Fuzzy Search**: Full-text in-memory search with typo tolerance (edit distance $\le 1$), token fallback, Bangla numeral normalization (`০-৯` $\leftrightarrow$ `0-9`), and indexing of all education entries, custom values, and document labels.
 - **🛡️ Duplicate Detection**: Warns when father name, name, district, or phone digits match an existing record ($\ge 4$ points).
 - **🔢 Sequential Non-reusable Codes**: Atomic sequential code assignment (`B-0143`, `G-0087`).
 - **🤝 Partner Management**: Associate records with partners, view real-time statistics (total, active, married), and tap to filter.
-- **📤 Smart WhatsApp Sharing**: Formatted biodata text generator, photo attachment selector, and "কাকে পাঠালেন?" follow-up logger.
+- **📤 Smart WhatsApp Sharing with Section Toggles**: Generate formatted biodata summaries with checkboxes to selectively include basic info, education, and individual custom fields. Hard privacy guarantees (`phoneLast4`, `memo`, `source`, `status` are never leaked). Select cover photo by default and share documents with privacy notice. Logs "কাকে পাঠালেন?" follow-ups.
 - **🗑️ 30-Day Trash & Soft Delete**: Safe delete with confirmation dialog and automatic 30-day purge on open.
-- **💾 Zip Backup & Merge Restore**: Full database and photo backup in a single `.zip` file using `fflate`.
+- **💾 Zip Backup & Merge Restore with Catalog Remapping**: Full database, custom catalog, suggestions, and photo backup in a single `.zip` file using `fflate`. On merge restore, merges `fieldDefs` by `normLabel` and safely remaps colliding IDs.
 - **🔒 App Lock**: 4-digit PIN security with `SubtleCrypto` PBKDF2 salted hashing, locking after 2 minutes in the background.
 
 ---
@@ -97,29 +102,34 @@ Use this checklist to verify the installed PWA on an Android phone:
 - [ ] **App Launcher & Icons**: Installed icon appears on the home screen with the correct green badge and maskable icon framing.
 - [ ] **Offline Operation**: Turn on Airplane mode and open the app. All screens and previously saved biodata load instantly without network connection.
 - [ ] **WhatsApp Multi-Share**: Share 2 photos + text from WhatsApp to Ghotkali. Verify both photos and text are grouped into a single `InboxItem`.
-- [ ] **Inbox Staging**: Newly shared item appears with the banner "ইনবক্সে জমা হয়েছে" and quick "কার কাছ থেকে এসেছে?" partner chips.
-- [ ] **Bangla Text Parser**: Tap "সাজিয়ে নিন". Verify name, father, mother, district, upazila, age, and profession are auto-filled from the text.
+- [ ] **Inbox Staging & Leftovers**: Newly shared item appears in Inbox. Tap "সাজিয়ে নিন". Verify recognized fields auto-fill and leftover lines appear in "আরও তথ্য পাওয়া গেছে" checklist with pre-checked catalog matches.
+- [ ] **Education Editor**: Add multiple degrees. Test suggestions, moving up/down, and "আলাদা করুন" split button. Test deleting an entry with 10-second undo toast.
+- [ ] **Custom Field Catalog**: Add custom field "চাচা". Verify it is suggested for the next person. In Settings, verify usage count, rename, and hide/unhide.
+- [ ] **Multi-Photo & Lightbox**: Upload multiple photos, set cover photo (gold star), swipe through full-screen lightbox, reorder, and remove with 10-second undo.
+- [ ] **Document Attachments**: Attach a PDF or doc file, assign a label suggestion, view via object URL, and test 10-second undo.
 - [ ] **Live Code Preview**: Toggle between "পাত্রী" (`B`) and "পাত্র" (`G`). The preview code updates live (`B-0001` / `G-0001`) and is only committed on save.
 - [ ] **Duplicate Warning**: Create another biodata with the same father name and district. Verify the duplicate warning card appears ($\ge 4$ points) showing matched fields and partner attribution, with "বিদ্যমান রেকর্ডে যুক্ত করুন" and "নতুন হিসেবে তৈরি করুন" options.
 - [ ] **Generous Search**:
   - [ ] Search with typo (e.g. `"ডাক্তর"` finds `"ডাক্তার"`).
   - [ ] Search with Bangla numerals (e.g. `"০১৪৩"` finds `"0143"`).
   - [ ] Search multi-word across fields (e.g. `"সিলেট রহিম"` finds records in Sylhet with father Rahim).
+  - [ ] Search by institution or degree name (e.g. `"ইঞ্জিনিয়ারিং"`).
+  - [ ] Search by custom value or document label.
 - [ ] **Status Lifecycle**: Change status to "বিবাহিত" (Married). Verify confirmation prompt asking "কে বিবাহ সম্পন্ন করেছে?" and recording partner attribution.
-- [ ] **WhatsApp Share Out**: On a person card or detail screen, tap the share icon. Select photo and text summary, tap share, and verify the "কাকে পাঠালেন?" prompt logs a `SendLog`.
+- [ ] **Customizable Share Out**: On a person card or detail screen, tap the share icon. Select/deselect basic info, education, and individual custom fields. Verify cover photo is default selected and document attachments include privacy warning. Verify `phoneLast4`, `memo`, `source`, and `status` are never leaked.
 - [ ] **Soft Delete & Trash**: Delete a person. Confirm dialog shows their name and code. Record moves to Trash. Tap "পুনরুদ্ধার" to restore.
 - [ ] **Zip Backup & Merge**:
   - [ ] In Settings, tap "ব্যাকআপ এক্সপোর্ট (Zip)". Save or share the zip file.
-  - [ ] In Settings, tap "ব্যাকআপ রিস্টোর (Zip)". Select the zip and choose "মার্জ করুন". Verify all records and photos are restored with matching counts.
+  - [ ] In Settings, tap "ব্যাকআপ রিস্টোর (Zip)". Select the zip and choose "মার্জ করুন". Verify all records, photos, documents, custom fields, and suggestions are restored with matching counts and normLabel merging.
 - [ ] **4-Digit PIN Lock**: Set a 4-digit PIN in Settings. Switch to another app for >2 minutes. Switch back to Ghotkali and verify the PIN lock screen appears and unlocks cleanly.
 
 ---
 
 ## 🧪 Automated Test Suite
 
-Run the full automated test suite covering code generation, normalization, fuzzy search, text parser, duplicate scoring, PIN security, and zip backup/restore:
+Run the full automated test suite covering code generation, normalization, fuzzy search, text parser, duplicate scoring, PIN security, custom fields catalog, education summaries, photos/docs management, share privacy, and zip backup/restore:
 
 ```bash
 npm test
 ```
-All 38 unit tests pass with zero warnings and errors.
+All 95 unit tests pass with zero warnings and errors.
