@@ -33,6 +33,36 @@ export function buildRecordSearchIndex(
   const sourceText = partnerName || 'নিজের own';
   const statusText = STATUS_LABELS[person.status] || '';
 
+  // Education entries (SPEC-UPDATE-1 3.6: all education entry fields)
+  const educationPieces: string[] = [];
+  if (person.educations) {
+    for (const edu of person.educations) {
+      if (edu.level) educationPieces.push(edu.level);
+      if (edu.subject) educationPieces.push(edu.subject);
+      if (edu.institution) educationPieces.push(edu.institution);
+      if (edu.result) educationPieces.push(edu.result);
+      if (edu.year) educationPieces.push(edu.year);
+      if (edu.note) educationPieces.push(edu.note);
+    }
+  }
+
+  // Custom values (SPEC-UPDATE-1 3.6: index custom values, but DO NOT index field labels)
+  const customValues: string[] = [];
+  if (person.extra) {
+    for (const item of person.extra) {
+      if (item.value) customValues.push(item.value);
+    }
+  }
+
+  // Document labels (SPEC-UPDATE-1 3.6)
+  const docLabels: string[] = [];
+  if (person.docs) {
+    for (const doc of person.docs) {
+      if (doc.label) docLabels.push(doc.label);
+      if (doc.name) docLabels.push(doc.name);
+    }
+  }
+
   const rawPieces = [
     person.code,
     person.name,
@@ -44,6 +74,9 @@ export function buildRecordSearchIndex(
     person.district,
     person.profession,
     person.education,
+    ...educationPieces,
+    ...customValues,
+    ...docLabels,
     person.memo,
     person.phoneLast4,
     ...(person.tags || []),

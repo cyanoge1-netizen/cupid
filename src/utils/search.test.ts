@@ -188,4 +188,128 @@ describe('Search Functionality - Six Cases from SPEC 5.9', () => {
     const allCodes = allResults.map((r) => r.person.code);
     expect(allCodes).toContain('G-0020');
   });
+
+  describe('Rich Biodata Search Index (SPEC-UPDATE-1 3.6 & 4 Acceptance)', () => {
+    const richPeople: Person[] = [
+      {
+        id: 'rp1',
+        code: 'B-0201',
+        gender: 'B',
+        name: 'সাকিব আল হাসান',
+        status: 'active',
+        sourceId: null,
+        tags: [],
+        photos: [],
+        docs: [
+          {
+            id: 'doc-1',
+            kind: 'pdf',
+            name: 'biodata_v1.pdf',
+            label: 'অফিসিয়াল বায়োডাটা',
+            mime: 'application/pdf',
+            blob: new Blob(),
+            createdAt: 1,
+          },
+        ],
+        educations: [
+          {
+            id: 'edu-1',
+            level: 'এমবিবিএস',
+            subject: 'চিকিৎসা বিজ্ঞান',
+            institution: 'ঢাকা মেডিকেল কলেজ',
+            result: 'উত্তীর্ণ',
+            year: '২০২২',
+          },
+          {
+            id: 'edu-2',
+            level: 'এইচএসসি',
+            institution: 'নটর ডেম কলেজ',
+          },
+        ],
+        extra: [
+          {
+            fieldId: 'field-blood-group',
+            value: 'ও পজিটিভ (O+)',
+          },
+          {
+            fieldId: 'field-father-job',
+            value: 'অবসরপ্রাপ্ত সেনা কর্মকর্তা',
+          },
+        ],
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+      {
+        id: 'rp2',
+        code: 'G-0202',
+        gender: 'G',
+        name: 'নুসরাত জাহান',
+        status: 'active',
+        sourceId: null,
+        tags: [],
+        photos: [],
+        docs: [],
+        educations: [
+          {
+            id: 'edu-3',
+            level: 'বিএসসি',
+            subject: 'কম্পিউটার সায়েন্স',
+            institution: 'শাহজালাল প্রযুক্তি বিশ্ববিদ্যালয়',
+          },
+        ],
+        extra: [
+          {
+            fieldId: 'field-blood-group',
+            value: 'এ পজিটিভ (A+)',
+          },
+        ],
+        createdAt: 2000,
+        updatedAt: 2000,
+      },
+    ];
+
+    it('finds a person by education institution name', () => {
+      // Searching "ঢাকা মেডিকেল" finds B-0201
+      const resDMC = searchPeople('ঢাকা মেডিকেল', richPeople);
+      expect(resDMC).toHaveLength(1);
+      expect(resDMC[0].person.code).toBe('B-0201');
+
+      // Searching "শাহজালাল" or "সাস্ট" (sust) finds G-0202
+      const resSUST = searchPeople('শাহজালাল', richPeople);
+      expect(resSUST).toHaveLength(1);
+      expect(resSUST[0].person.code).toBe('G-0202');
+    });
+
+    it('finds a person by education subject, level, and year', () => {
+      const resSubject = searchPeople('চিকিৎসা বিজ্ঞান', richPeople);
+      expect(resSubject).toHaveLength(1);
+      expect(resSubject[0].person.code).toBe('B-0201');
+
+      const resYear = searchPeople('২০২২', richPeople);
+      expect(resYear).toHaveLength(1);
+      expect(resYear[0].person.code).toBe('B-0201');
+    });
+
+    it('finds a person by custom value but does not index field labels', () => {
+      // Custom value "অবসরপ্রাপ্ত সেনা কর্মকর্তা" matches B-0201
+      const resArmy = searchPeople('সেনা কর্মকর্তা', richPeople);
+      expect(resArmy).toHaveLength(1);
+      expect(resArmy[0].person.code).toBe('B-0201');
+
+      // Blood group value "ও পজিটিভ" matches B-0201
+      const resBlood = searchPeople('ও পজিটিভ', richPeople);
+      expect(resBlood).toHaveLength(1);
+      expect(resBlood[0].person.code).toBe('B-0201');
+
+      // Searching field label "field-blood-group" or internal key should NOT match
+      const resLabel = searchPeople('field-blood-group', richPeople);
+      expect(resLabel).toHaveLength(0);
+    });
+
+    it('finds a person by document label', () => {
+      const resDoc = searchPeople('অফিসিয়াল বায়োডাটা', richPeople);
+      expect(resDoc).toHaveLength(1);
+      expect(resDoc[0].person.code).toBe('B-0201');
+    });
+  });
 });
