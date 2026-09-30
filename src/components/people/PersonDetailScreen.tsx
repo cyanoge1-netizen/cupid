@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { Person, Partner, Status, SendLog } from '../../types';
+import { useState, useEffect } from 'react';
+import type { Person, Partner, Status, SendLog, FieldDef } from '../../types';
 import { bn } from '../../i18n/bn';
+import { db } from '../../db';
 import { StatusBadge } from '../common/StatusBadge';
 import { PartnerBadge } from '../common/PartnerBadge';
 import { BlobImage } from '../common/BlobImage';
@@ -44,6 +45,17 @@ export function PersonDetailScreen({
   const [isDeleting, setIsDeleting] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [showRawText, setShowRawText] = useState(false);
+  const [fieldDefsMap, setFieldDefsMap] = useState<Map<string, FieldDef>>(new Map());
+
+  useEffect(() => {
+    db.fieldDefs.toArray().then((defs) => {
+      const map = new Map<string, FieldDef>();
+      for (const d of defs) {
+        map.set(d.id, d);
+      }
+      setFieldDefsMap(map);
+    });
+  }, [person.extra]);
 
   const partner = person.sourceId
     ? partners.find((p) => p.id === person.sourceId)
@@ -332,6 +344,50 @@ export function PersonDetailScreen({
             </div>
           ) : null}
         </div>
+
+        {/* Custom Fields Sections (SPEC-UPDATE-1 3.4) */}
+        {(['family', 'personal', 'professional', 'preference', 'other'] as const).map((sec) => {
+          const secValues = (person.extra || []).filter((item) => {
+            const def = fieldDefsMap.get(item.fieldId);
+            return def?.section === sec && item.value?.trim();
+          });
+
+          if (secValues.length === 0) return null;
+
+          const secName = bn.customFields.sections[sec] || sec;
+
+          return (
+            <div
+              key={sec}
+              className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-3"
+            >
+              <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">
+                {secName}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-base">
+                {secValues.map((item) => {
+                  const def = fieldDefsMap.get(item.fieldId);
+                  if (!def) return null;
+                  const isLong = item.value.length > 50 || item.value.includes('\n');
+
+                  return (
+                    <div
+                      key={item.fieldId}
+                      className={isLong ? 'sm:col-span-2' : ''}
+                    >
+                      <span className="text-xs font-semibold text-gray-500 block mb-0.5">
+                        {def.label}
+                      </span>
+                      <span className="font-medium text-gray-800 whitespace-pre-wrap">
+                        {item.value}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
 
         {/* Documents Card */}
         {person.docs && person.docs.length > 0 ? (

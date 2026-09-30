@@ -13,6 +13,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import { CustomFieldsCatalogSection } from './CustomFieldsCatalogSection';
 
 interface SettingsScreenProps {
   lastBackupAt?: number;
@@ -311,6 +312,9 @@ export function SettingsScreen({
           </div>
         </div>
       </section>
+
+      {/* 3. Custom Fields Catalog Section (SPEC-UPDATE-1 3.4) */}
+      <CustomFieldsCatalogSection />
 
       {/* Restore Confirmation Modal */}
       {selectedZipFile ? (
