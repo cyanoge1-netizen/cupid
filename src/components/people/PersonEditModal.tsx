@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Person, Partner, EducationEntry, CustomValue, FieldDef, FieldSection, MediaRef } from '../../types';
 import { bn } from '../../i18n/bn';
 import { db } from '../../db';
-import { X, ChevronDown, ChevronUp, Plus, Trash2, AlignLeft, Type } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Plus, Trash2, AlignLeft, Type, Check } from 'lucide-react';
 import { EducationEditor } from './EducationEditor';
 import { AddCustomFieldSheet } from './AddCustomFieldSheet';
 import { PhotoManager } from './PhotoManager';
@@ -296,17 +296,28 @@ export function PersonEditModal({
               {person.code}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="touch-target p-2 text-gray-400 hover:text-gray-600 rounded-full"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              form="person-edit-form"
+              disabled={isSubmitting}
+              className="touch-target px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-sm transition flex items-center gap-1.5"
+            >
+              <Check className="w-4 h-4" />
+              <span>{isSubmitting ? 'সংরক্ষণ হচ্ছে...' : bn.actions.save}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="touch-target p-2 text-gray-400 hover:text-gray-600 rounded-full"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Collapsible Sections (SPEC-UPDATE-1 3.4) */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <form id="person-edit-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Section 1: মূল তথ্য (Basic) */}
           <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-xs">
             <button
@@ -709,26 +720,27 @@ export function PersonEditModal({
               </div>
             )}
           </div>
-
-          {/* Footer action buttons */}
-          <div className="pt-2 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="touch-target flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition"
-            >
-              {bn.actions.cancel}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="touch-target flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition"
-            >
-              {bn.actions.save}
-            </button>
-          </div>
         </form>
+
+        {/* Pinned Footer action buttons */}
+        <div className="p-3 sm:p-4 border-t border-gray-200 bg-white sm:rounded-b-2xl flex gap-3 shadow-lg z-10 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="touch-target flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition"
+          >
+            {bn.actions.cancel}
+          </button>
+          <button
+            type="submit"
+            form="person-edit-form"
+            disabled={isSubmitting}
+            className="touch-target flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-50 transition"
+          >
+            {isSubmitting ? 'সংরক্ষণ হচ্ছে...' : bn.actions.save}
+          </button>
+        </div>
 
         {/* Add Custom Field Sheet Modal */}
         {activeAddSection ? (

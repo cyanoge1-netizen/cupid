@@ -331,6 +331,16 @@ export function ProcessItemScreen({
           </button>
           <h1 className="text-xl font-bold text-gray-900">{bn.inbox.processTitle}</h1>
         </div>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="touch-target px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-sm transition flex items-center gap-1.5"
+        >
+          <Check className="w-4 h-4" />
+          <span>{isSaving ? 'সংরক্ষণ হচ্ছে...' : bn.actions.save}</span>
+        </button>
       </header>
 
       <main className="max-w-xl mx-auto p-4 space-y-5">
