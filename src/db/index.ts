@@ -193,3 +193,98 @@ export async function syncCounterWithExistingPeople(customDb: GhotkaliDatabase =
     await customDb.meta.put({ key: 'counter:G', value: maxG });
   }
 }
+
+// ---------------- Partners ----------------
+
+export async function createPartner(
+  partnerData: Omit<Partner, 'id' | 'createdAt'> & { id?: string },
+  customDb: GhotkaliDatabase = db
+): Promise<Partner> {
+  const newPartner: Partner = {
+    ...partnerData,
+    id: partnerData.id || crypto.randomUUID(),
+    createdAt: Date.now(),
+  };
+  await customDb.partners.add(newPartner);
+  return newPartner;
+}
+
+export async function updatePartner(
+  id: string,
+  updates: Partial<Omit<Partner, 'id' | 'createdAt'>>,
+  customDb: GhotkaliDatabase = db
+): Promise<void> {
+  await customDb.partners.update(id, updates);
+}
+
+export async function softDeletePartner(id: string, customDb: GhotkaliDatabase = db): Promise<void> {
+  await customDb.partners.update(id, {
+    deletedAt: Date.now(),
+  });
+}
+
+export async function restorePartner(id: string, customDb: GhotkaliDatabase = db): Promise<void> {
+  await customDb.partners.update(id, {
+    deletedAt: undefined,
+  });
+}
+
+// ---------------- Inbox ----------------
+
+export async function createInboxItem(
+  itemData: Omit<InboxItem, 'id' | 'receivedAt'> & { id?: string; receivedAt?: number },
+  customDb: GhotkaliDatabase = db
+): Promise<InboxItem> {
+  const newItem: InboxItem = {
+    ...itemData,
+    id: itemData.id || crypto.randomUUID(),
+    receivedAt: itemData.receivedAt || Date.now(),
+  };
+  await customDb.inbox.add(newItem);
+  return newItem;
+}
+
+export async function softDiscardInboxItem(id: string, customDb: GhotkaliDatabase = db): Promise<void> {
+  await customDb.inbox.update(id, {
+    discardedAt: Date.now(),
+  });
+}
+
+export async function deleteInboxItem(id: string, customDb: GhotkaliDatabase = db): Promise<void> {
+  await customDb.inbox.delete(id);
+}
+
+// ---------------- SendLog ----------------
+
+export async function createSendLog(
+  logData: Omit<SendLog, 'id' | 'at'> & { id?: string; at?: number },
+  customDb: GhotkaliDatabase = db
+): Promise<SendLog> {
+  const newLog: SendLog = {
+    ...logData,
+    id: logData.id || crypto.randomUUID(),
+    at: logData.at || Date.now(),
+  };
+  await customDb.sendLogs.add(newLog);
+  return newLog;
+}
+
+export async function updateSendLog(
+  id: string,
+  updates: Partial<Omit<SendLog, 'id' | 'personId' | 'at'>>,
+  customDb: GhotkaliDatabase = db
+): Promise<void> {
+  await customDb.sendLogs.update(id, updates);
+}
+
+// ---------------- Meta ----------------
+
+export async function getMeta<T = unknown>(key: string, customDb: GhotkaliDatabase = db): Promise<T | undefined> {
+  const record = await customDb.meta.get(key);
+  return record?.value as T | undefined;
+}
+
+export async function setMeta(key: string, value: unknown, customDb: GhotkaliDatabase = db): Promise<void> {
+  await customDb.meta.put({ key, value });
+}
+
