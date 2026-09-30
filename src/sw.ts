@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute } from 'workbox-precaching';
+import { db } from './db';
+import type { MediaRef, InboxItem } from './types';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -13,50 +15,6 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
-
-/**
- * Open or upgrade Dexie/IndexedDB database in service worker
- */
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('GhotkaliDB', 1);
-
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains('people')) {
-        const pStore = db.createObjectStore('people', { keyPath: 'id' });
-        pStore.createIndex('code', 'code', { unique: true });
-        pStore.createIndex('status', 'status');
-        pStore.createIndex('sourceId', 'sourceId');
-        pStore.createIndex('deletedAt', 'deletedAt');
-        pStore.createIndex('updatedAt', 'updatedAt');
-      }
-      if (!db.objectStoreNames.contains('partners')) {
-        const partStore = db.createObjectStore('partners', { keyPath: 'id' });
-        partStore.createIndex('deletedAt', 'deletedAt');
-        partStore.createIndex('createdAt', 'createdAt');
-      }
-      if (!db.objectStoreNames.contains('inbox')) {
-        const inStore = db.createObjectStore('inbox', { keyPath: 'id' });
-        inStore.createIndex('status', 'status');
-        inStore.createIndex('discardedAt', 'discardedAt');
-        inStore.createIndex('receivedAt', 'receivedAt');
-      }
-      if (!db.objectStoreNames.contains('sendLogs')) {
-        const sStore = db.createObjectStore('sendLogs', { keyPath: 'id' });
-        sStore.createIndex('personId', 'personId');
-        sStore.createIndex('at', 'at');
-        sStore.createIndex('response', 'response');
-      }
-      if (!db.objectStoreNames.contains('meta')) {
-        db.createObjectStore('meta', { keyPath: 'key' });
-      }
-    };
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
 
 /**
  * Generates thumbnail Blob in worker if OffscreenCanvas is available
@@ -122,7 +80,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
           const combinedText = [title, text].filter(Boolean).join('\n').trim();
 
           const mediaEntries = formData.getAll('media');
-          const files: any[] = [];
+          const files: MediaRef[] = [];
 
           for (const entry of mediaEntries) {
             if (entry instanceof Blob) {
@@ -144,12 +102,8 @@ self.addEventListener('fetch', (event: FetchEvent) => {
             }
           }
 
-          // Write one InboxItem to IndexedDB
-          const db = await openDB();
-          const tx = db.transaction('inbox', 'readwrite');
-          const store = tx.objectStore('inbox');
-
-          const inboxItem = {
+          // Write one InboxItem to IndexedDB using shared Dexie db
+          const inboxItem: InboxItem = {
             id: crypto.randomUUID(),
             files,
             text: combinedText,
@@ -158,11 +112,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
             receivedAt: Date.now(),
           };
 
-          await new Promise<void>((resolve, reject) => {
-            const addReq = store.add(inboxItem);
-            addReq.onsuccess = () => resolve();
-            addReq.onerror = () => reject(addReq.error);
-          });
+          await db.inbox.add(inboxItem);
 
           // Respond with 303 redirect to inbox tab with shared query param
           // Note: using resolved URL relative to the request so base path is preserved

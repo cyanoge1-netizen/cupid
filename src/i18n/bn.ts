@@ -159,6 +159,7 @@ export const bn = {
     itemCount: '{count}টি আইটেম',
     receivedAt: 'প্রাপ্তির সময়: {time}',
     sharedSuccess: 'ইনবক্সে জমা হয়েছে',
+    shareFailed: 'হোয়াটসঅ্যাপ থেকে শেয়ার গ্রহণ করতে ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
     whoSharedPrompt: 'কার কাছ থেকে এসেছে?',
     processTitle: 'বায়োডাটা সাজিয়ে নিন',
     codePreview: 'প্রত্যাশিত কোড: {code}',

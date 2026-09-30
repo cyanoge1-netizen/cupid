@@ -48,6 +48,8 @@ import {
   Inbox,
   Trash2,
   Settings,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 
 export default function App() {
@@ -65,6 +67,7 @@ export default function App() {
 
   // Shared state from Web Share Target
   const [isJustShared, setIsJustShared] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   // App Data State
   const [people, setPeople] = useState<Person[]>([]);
@@ -134,11 +137,19 @@ export default function App() {
         setIsLocked(true);
       }
 
-      // 4. Check URL params for share target redirect
+      // 4. Check URL params for share target redirect or error
       const params = new URLSearchParams(window.location.search);
-      if (params.get('shared') === '1' || params.get('tab') === 'inbox') {
+      const isShareError = params.get('error') === 'share_failed';
+      const isSharedSuccess = params.get('shared') === '1';
+
+      if (isShareError) {
         setActiveTab('inbox');
-        setIsJustShared(params.get('shared') === '1');
+        setShareError(bn.inbox.shareFailed);
+        // Clean URL search query without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (isSharedSuccess || params.get('tab') === 'inbox') {
+        setActiveTab('inbox');
+        setIsJustShared(isSharedSuccess);
         // Clean URL search query without reloading
         window.history.replaceState({}, '', window.location.pathname);
       }
@@ -495,6 +506,23 @@ export default function App() {
 
       {/* Main Tab Content */}
       <main className="flex-1 max-w-2xl w-full mx-auto p-4">
+        {shareError ? (
+          <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-2xl flex items-center justify-between mb-4 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <span className="text-sm font-semibold">{shareError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShareError(null)}
+              className="touch-target text-gray-400 hover:text-gray-600 p-1 rounded-full"
+              aria-label={bn.actions.close}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : null}
+
         {activeTab === 'home' ? (
           <HomeScreen
             people={people}
