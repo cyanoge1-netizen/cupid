@@ -102,6 +102,13 @@ export const bn = {
     allSources: 'সকল উৎস',
     filterByDistrict: 'জেলা ফিল্টার',
     filterBySource: 'উৎস ফিল্টার',
+    bulkSelect: 'একাধিক নির্বাচন',
+    bulkSelectCancel: 'নির্বাচন বাতিল',
+    selectedCount: '{count} জন নির্বাচিত',
+    selectAll: 'সব নির্বাচন করুন',
+    deselectAll: 'সব বাতিল',
+    bulkShare: 'একত্রে শেয়ার করুন',
+    bulkShareTitle: 'একত্রে বায়োডাটা শেয়ার',
   },
 
   // Person Detail & Form Fields
@@ -198,6 +205,9 @@ export const bn = {
     sectionBasic: 'মূল তথ্য',
     sectionEducation: 'শিক্ষা',
     sectionCustomFields: 'কাস্টম তথ্যসমূহ',
+    redactedOption: 'রেডাক্টেড (কোড সহ নাম গোপন)',
+    fullOption: 'সম্পূর্ণ বায়োডাটা (নাম সহ)',
+    redactedNotice: 'নাম, পিতা-মাতা, গ্রাম ও যোগাযোগের তথ্য গোপন থাকবে। শুধু কোড প্রদর্শিত হবে।',
     docPrivacyNotice: 'সতর্কতা: মূল ফাইলে প্রার্থীর মোবাইল নম্বর বা পূর্ণ ঠিকানা থাকতে পারে।',
   },
 

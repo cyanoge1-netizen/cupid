@@ -407,7 +407,9 @@ export function PersonDetailScreen({
             </div>
 
             <div>
-              <span className="text-sm text-gray-500 block">{bn.fields.phoneLast4}</span>
+              <span className="text-sm text-gray-500 block">
+                {person.phone ? bn.fields.phone : bn.fields.phoneLast4}
+              </span>
               <span className="font-medium text-gray-800 font-mono">
                 {person.phone ? person.phone : (person.phoneLast4 ? `***${person.phoneLast4}` : '—')}
               </span>

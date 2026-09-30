@@ -3,13 +3,14 @@ import type { Person, Partner, Status, Gender } from '../../types';
 import { bn } from '../../i18n/bn';
 import { PersonCard } from './PersonCard';
 import { searchPeople } from '../../utils/search';
-import { Search, Mic, MicOff, X, Filter } from 'lucide-react';
+import { Search, Mic, MicOff, X, Filter, CheckSquare, Share2 } from 'lucide-react';
 
 interface PeopleScreenProps {
   people: Person[];
   partners: Partner[];
   onSelectPerson: (person: Person) => void;
   onSharePerson: (person: Person, e: React.MouseEvent) => void;
+  onBulkShare?: (selectedPeople: Person[]) => void;
   initialSourceFilter?: string | null;
   initialStatusFilter?: Status | 'all';
   initialQuery?: string;
@@ -20,6 +21,7 @@ export function PeopleScreen({
   partners,
   onSelectPerson,
   onSharePerson,
+  onBulkShare,
   initialSourceFilter,
   initialStatusFilter = 'active',
   initialQuery = '',
@@ -34,6 +36,8 @@ export function PeopleScreen({
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
   const [isListening, setIsListening] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Debounce query (150ms) as specified in SPEC 5.9
   useEffect(() => {
@@ -128,8 +132,42 @@ export function PeopleScreen({
     { key: 'G', label: bn.gender.G },
   ];
 
+  const handleToggleSelect = (person: Person) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(person.id)) {
+        next.delete(person.id);
+      } else {
+        next.add(person.id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === searchResults.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(searchResults.map((r) => r.person.id)));
+    }
+  };
+
+  const handleCancelSelection = () => {
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleTriggerBulkShare = () => {
+    const selectedPeople = searchResults
+      .map((r) => r.person)
+      .filter((p) => selectedIds.has(p.id));
+    if (onBulkShare && selectedPeople.length > 0) {
+      onBulkShare(selectedPeople);
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-12">
       {/* Search Input Bar */}
       <div className="relative flex items-center">
         <div className="absolute left-3.5 text-gray-400 pointer-events-none">
@@ -323,11 +361,43 @@ export function PeopleScreen({
         </div>
       ) : null}
 
-      {/* Results Header Count */}
-      <div className="flex items-center justify-between text-sm text-gray-500 px-1">
+      {/* Results Header Count & Bulk Select Actions */}
+      <div className="flex items-center justify-between text-sm text-gray-500 px-1 py-1">
         <span>
           {bn.people.resultsCount.replace('{count}', String(searchResults.length))}
         </span>
+
+        {searchResults.length > 0 ? (
+          <div className="flex items-center gap-2">
+            {isSelectionMode ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="touch-target text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-xl transition"
+                >
+                  {selectedIds.size === searchResults.length ? bn.people.deselectAll : bn.people.selectAll}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelSelection}
+                  className="touch-target text-xs font-semibold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-xl transition"
+                >
+                  {bn.people.bulkSelectCancel}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsSelectionMode(true)}
+                className="touch-target text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+              >
+                <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{bn.people.bulkSelect}</span>
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* Cards List or Empty State */}
@@ -344,10 +414,34 @@ export function PeopleScreen({
               partner={person.sourceId ? partnersMap.get(person.sourceId) : undefined}
               onSelect={onSelectPerson}
               onShare={onSharePerson}
+              selectable={isSelectionMode}
+              selected={selectedIds.has(person.id)}
+              onToggleSelect={handleToggleSelect}
             />
           ))}
         </div>
       )}
+
+      {/* Floating Bottom Bar for Bulk Action */}
+      {isSelectionMode ? (
+        <div className="fixed bottom-20 inset-x-4 max-w-lg mx-auto z-40 bg-gray-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between border border-gray-700 animate-slide-up">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm">
+              {bn.people.selectedCount.replace('{count}', String(selectedIds.size))}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTriggerBulkShare}
+            disabled={selectedIds.size === 0}
+            className="touch-target px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:pointer-events-none text-white font-bold rounded-xl text-sm transition flex items-center gap-1.5 shadow-sm"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>{bn.people.bulkShare}</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

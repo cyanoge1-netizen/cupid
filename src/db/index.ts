@@ -64,7 +64,12 @@ export const db = new GhotkaliDatabase();
 // ---------------- Seed Data (SPEC-UPDATE-1 3.4) ----------------
 
 export const SEED_FIELD_DEFS: Array<{ label: string; section: FieldSection; kind: 'text' | 'longtext' | 'number' }> = [
-  // family: পিতার পেশা, মাতার পেশা, ভাই, বোন, চাচা, মামা, পরিবারের ধরন, পারিবারিক অবস্থা, নিজস্ব বাড়ি
+  // personal: বিকল্প মোবাইল নম্বর, হোয়াটসঅ্যাপ নম্বর
+  { label: 'বিকল্প মোবাইল নম্বর', section: 'personal', kind: 'text' },
+  { label: 'হোয়াটসঅ্যাপ নম্বর', section: 'personal', kind: 'text' },
+
+  // family: পিতার পেশা, মাতার পেশা, ভাই, বোন, চাচা, মামা, পরিবারের ধরন, পারিবারিক অবস্থা, নিজস্ব বাড়ি, অভিভাবকের নাম ও যোগাযোগ, আত্মীয়ের নাম ও যোগাযোগ, অভিভাবকের মোবাইল নম্বর
+  { label: 'অভিভাবকের মোবাইল নম্বর', section: 'family', kind: 'text' },
   { label: 'পিতার পেশা', section: 'family', kind: 'text' },
   { label: 'মাতার পেশা', section: 'family', kind: 'text' },
   { label: 'ভাই', section: 'family', kind: 'text' },
@@ -74,6 +79,11 @@ export const SEED_FIELD_DEFS: Array<{ label: string; section: FieldSection; kind
   { label: 'পরিবারের ধরন', section: 'family', kind: 'text' },
   { label: 'পারিবারিক অবস্থা', section: 'family', kind: 'text' },
   { label: 'নিজস্ব বাড়ি', section: 'family', kind: 'text' },
+  { label: 'অভিভাবকের নাম ও যোগাযোগ', section: 'family', kind: 'text' },
+  { label: 'আত্মীয়ের নাম ও যোগাযোগ', section: 'family', kind: 'text' },
+  { label: 'পিতার মোবাইল নম্বর', section: 'family', kind: 'text' },
+  { label: 'মাতার মোবাইল নম্বর', section: 'family', kind: 'text' },
+  { label: 'চাচা/মামার নাম ও নম্বর', section: 'family', kind: 'text' },
 
   // personal: গায়ের রং, ওজন, রক্তের গ্রুপ, ধর্মীয় অনুশীলন, আগের বিবাহ, স্থায়ী ঠিকানা, বর্তমান ঠিকানা
   { label: 'গায়ের রং', section: 'personal', kind: 'text' },

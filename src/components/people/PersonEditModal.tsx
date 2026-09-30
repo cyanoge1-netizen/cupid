@@ -534,18 +534,6 @@ export function PersonEditModal({
                     className="w-full min-h-[48px] px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base"
                   />
                 </div>
-
-                {/* Quick Add Custom Field inside Section 1 */}
-                <div className="pt-2 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setActiveAddSection('other')}
-                    className="touch-target inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-dashed border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 text-sm font-semibold transition w-full justify-center"
-                  >
-                    <Plus className="w-4 h-4 text-emerald-600" />
-                    <span>{bn.customFields.addInfo}</span>
-                  </button>
-                </div>
               </div>
             )}
           </div>

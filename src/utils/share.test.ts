@@ -152,4 +152,56 @@ describe('Share Sheet Logic & Biodata Summary (SPEC-UPDATE-1 3.7 & 4 Acceptance)
       'বিএসসি (সিলেট ইঞ্জিনিয়ারিং কলেজ), এইচএসসি (এমসি কলেজ)'
     );
   });
+
+  it('redacted mode hides name, alias, parents, village and keeps code and general fields', () => {
+    const redactedSummary = generateBiodataSummary(mockPerson, {
+      redacted: true,
+      includeBasic: true,
+      includeEducation: true,
+    });
+
+    // Identifies candidate by code
+    expect(redactedSummary).toContain('B-0312');
+    expect(redactedSummary).toContain('কোড: B-0312');
+
+    // Personal identifiers must NOT be in redacted summary
+    expect(redactedSummary).not.toContain('তানভীর আহমেদ');
+    expect(redactedSummary).not.toContain('রাতুল');
+    expect(redactedSummary).not.toContain('রফিক উদ্দিন');
+    expect(redactedSummary).not.toContain('শামীমা বেগম');
+    expect(redactedSummary).not.toContain('চারখাই');
+
+    // Should indicate [গোপন]
+    expect(redactedSummary).toContain('নাম: [গোপন]');
+    expect(redactedSummary).toContain('পিতার নাম: [গোপন]');
+    expect(redactedSummary).toContain('মাতার নাম: [গোপন]');
+    expect(redactedSummary).toContain('গ্রাম: [গোপন]');
+
+    // Safe demographic info remains
+    expect(redactedSummary).toContain('28 বছর');
+    expect(redactedSummary).toContain('সফটওয়্যার ইঞ্জিনিয়ার');
+    expect(redactedSummary).toContain('সিলেট');
+    expect(redactedSummary).toContain('বিয়ানীবাজার');
+  });
+
+  it('redacted mode scrubs embedded contact numbers, emails, and links', () => {
+    const personWithSensitiveInfo: Person = {
+      ...mockPerson,
+      profession: 'কল করুন 01712345678 অথবা ইমেইল info@example.com',
+      educations: [
+        { id: 'e1', level: 'অনার্স', institution: 'ফেসবুক fb.com/profile' },
+      ],
+    };
+
+    const redacted = generateBiodataSummary(personWithSensitiveInfo, {
+      redacted: true,
+      includeBasic: true,
+      includeEducation: true,
+    });
+
+    expect(redacted).not.toContain('01712345678');
+    expect(redacted).not.toContain('info@example.com');
+    expect(redacted).not.toContain('fb.com/profile');
+    expect(redacted).toContain('▇▇▇▇');
+  });
 });

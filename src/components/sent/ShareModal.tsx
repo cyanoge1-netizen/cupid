@@ -14,6 +14,7 @@ import {
   User,
   Send,
   Star,
+  Shield,
 } from 'lucide-react';
 
 const SHARE_PREFS_KEY = 'ghotkali_share_preferences';
@@ -22,6 +23,7 @@ interface SharePreferences {
   includeBasic: boolean;
   includeEducation: boolean;
   selectedCustomFieldIds: string[];
+  redacted: boolean;
 }
 
 function loadSharePrefs(): SharePreferences {
@@ -33,6 +35,7 @@ function loadSharePrefs(): SharePreferences {
         includeBasic: typeof parsed.includeBasic === 'boolean' ? parsed.includeBasic : true,
         includeEducation: typeof parsed.includeEducation === 'boolean' ? parsed.includeEducation : true,
         selectedCustomFieldIds: Array.isArray(parsed.selectedCustomFieldIds) ? parsed.selectedCustomFieldIds : [],
+        redacted: typeof parsed.redacted === 'boolean' ? parsed.redacted : true,
       };
     }
   } catch {}
@@ -40,6 +43,7 @@ function loadSharePrefs(): SharePreferences {
     includeBasic: true,
     includeEducation: true,
     selectedCustomFieldIds: [],
+    redacted: true, // Default redacted every time
   };
 }
 
@@ -108,6 +112,7 @@ export function ShareModal({
         includeEducation: prefs.includeEducation,
         selectedExtraFieldIds: prefs.selectedCustomFieldIds,
         fieldDefsMap,
+        redacted: prefs.redacted,
       }),
     [person, prefs, fieldDefsMap]
   );
@@ -266,6 +271,39 @@ export function ShareModal({
                   {bn.source.partnerWarning.replace('{partner}', partner.name)}
                 </span>
               </div>
+            ) : null}
+
+            {/* Redaction Mode Toggle */}
+            <div className="bg-gray-100 p-1 rounded-xl flex gap-1 shadow-inner">
+              <button
+                type="button"
+                onClick={() => updatePrefs((p) => ({ ...p, redacted: true }))}
+                className={`touch-target flex-1 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition ${
+                  prefs.redacted
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>{bn.sent.redactedOption}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updatePrefs((p) => ({ ...p, redacted: false }))}
+                className={`touch-target flex-1 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition ${
+                  !prefs.redacted
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>{bn.sent.fullOption}</span>
+              </button>
+            </div>
+            {prefs.redacted ? (
+              <p className="text-xs text-gray-500 px-1 -mt-2">
+                🔒 {bn.sent.redactedNotice}
+              </p>
             ) : null}
 
             {/* Text Summary Checkbox & Copy Button */}

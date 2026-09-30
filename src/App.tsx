@@ -34,6 +34,7 @@ import { InboxScreen } from './components/inbox/InboxScreen';
 import { ProcessItemScreen } from './components/inbox/ProcessItemScreen';
 import { SentScreen } from './components/sent/SentScreen';
 import { ShareModal } from './components/sent/ShareModal';
+import { BulkShareModal } from './components/sent/BulkShareModal';
 import { TrashScreen } from './components/trash/TrashScreen';
 import { SettingsScreen } from './components/settings/SettingsScreen';
 import { PinLockScreen } from './components/settings/PinLockScreen';
@@ -55,6 +56,7 @@ export default function App() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [processingItem, setProcessingItem] = useState<InboxItem | null>(null);
   const [sharingPerson, setSharingPerson] = useState<Person | null>(null);
+  const [bulkSharingPeople, setBulkSharingPeople] = useState<Person[] | null>(null);
 
   // Filter State passed between screens
   const [peopleFilterSource, setPeopleFilterSource] = useState<string | null | undefined>(undefined);
@@ -331,6 +333,21 @@ export default function App() {
     await loadDatabase();
   };
 
+  const handleSaveBulkSendLogs = async (recipient: string, personIds: string[]) => {
+    const now = Date.now();
+    for (const pId of personIds) {
+      await createSendLog({
+        personId: pId,
+        recipient,
+        version: 'redacted',
+        response: 'pending',
+        at: now,
+      });
+    }
+    setBulkSharingPeople(null);
+    await loadDatabase();
+  };
+
   const handleUpdateSendResponse = async (logId: string, response: SendLog['response']) => {
     await updateSendLog(logId, { response });
     await loadDatabase();
@@ -510,6 +527,7 @@ export default function App() {
               e.stopPropagation();
               setSharingPerson(p);
             }}
+            onBulkShare={(selectedPeople) => setBulkSharingPeople(selectedPeople)}
           />
         ) : null}
 
@@ -587,6 +605,17 @@ export default function App() {
           recentSendLogs={sendLogs}
           onClose={() => setSharingPerson(null)}
           onSaveSendLog={handleSaveSendLog}
+        />
+      ) : null}
+
+      {/* Bulk Share Modal Dialog */}
+      {bulkSharingPeople ? (
+        <BulkShareModal
+          people={bulkSharingPeople}
+          partnersMap={partnersMap}
+          recentSendLogs={sendLogs}
+          onClose={() => setBulkSharingPeople(null)}
+          onSaveSendLogs={handleSaveBulkSendLogs}
         />
       ) : null}
 

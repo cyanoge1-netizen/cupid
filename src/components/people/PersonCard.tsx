@@ -2,7 +2,7 @@ import type { Person, Partner } from '../../types';
 import { StatusBadge } from '../common/StatusBadge';
 import { PartnerBadge } from '../common/PartnerBadge';
 import { BlobImage } from '../common/BlobImage';
-import { Share2, User, Phone, MessageCircle } from 'lucide-react';
+import { Share2, User, Phone, MessageCircle, Check } from 'lucide-react';
 import { bn } from '../../i18n/bn';
 import { educationSummary } from '../../utils/summary';
 
@@ -11,9 +11,20 @@ interface PersonCardProps {
   partner?: Partner;
   onSelect: (person: Person) => void;
   onShare: (person: Person, e: React.MouseEvent) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (person: Person) => void;
 }
 
-export function PersonCard({ person, partner, onSelect, onShare }: PersonCardProps) {
+export function PersonCard({
+  person,
+  partner,
+  onSelect,
+  onShare,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}: PersonCardProps) {
   const coverPhoto =
     person.photos?.find((p) => p.id === person.coverPhotoId) || person.photos?.[0];
   const photoBlob = coverPhoto?.thumb || coverPhoto?.blob;
@@ -36,14 +47,41 @@ export function PersonCard({ person, partner, onSelect, onShare }: PersonCardPro
     }
   };
 
+  const handleCardClick = () => {
+    if (selectable && onToggleSelect) {
+      onToggleSelect(person);
+    } else {
+      onSelect(person);
+    }
+  };
+
   return (
     <div
-      onClick={() => onSelect(person)}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 transition active:scale-[0.99] hover:border-gray-300 cursor-pointer flex flex-col gap-3"
+      onClick={handleCardClick}
+      className={`rounded-xl shadow-sm border p-4 transition active:scale-[0.99] cursor-pointer flex flex-col gap-3 ${
+        selected
+          ? 'bg-emerald-50/40 border-emerald-500 ring-2 ring-emerald-500/20'
+          : 'bg-white border-gray-200 hover:border-gray-300'
+      }`}
     >
-      {/* Top Header: Code, Badges, and WhatsApp Share button */}
+      {/* Top Header: Code, Badges, and WhatsApp Share button / Checkbox */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
+          {selectable ? (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onToggleSelect) onToggleSelect(person);
+              }}
+              className={`w-5 h-5 rounded-md flex items-center justify-center transition border ${
+                selected
+                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                  : 'bg-white border-gray-300'
+              }`}
+            >
+              {selected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : null}
+            </div>
+          ) : null}
           <span className="font-mono font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded text-sm tracking-wider">
             {person.code}
           </span>
@@ -51,15 +89,17 @@ export function PersonCard({ person, partner, onSelect, onShare }: PersonCardPro
           <StatusBadge status={person.status} size="sm" />
         </div>
 
-        <button
-          type="button"
-          onClick={(e) => onShare(person, e)}
-          className="touch-target p-2 text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 rounded-full transition"
-          aria-label={bn.actions.share}
-          title={bn.sent.shareViaWhatsApp}
-        >
-          <Share2 className="w-5 h-5" />
-        </button>
+        {!selectable ? (
+          <button
+            type="button"
+            onClick={(e) => onShare(person, e)}
+            className="touch-target p-2 text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 rounded-full transition"
+            aria-label={bn.actions.share}
+            title={bn.sent.shareViaWhatsApp}
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+        ) : null}
       </div>
 
       {/* Main Body: Thumbnail + Info */}
